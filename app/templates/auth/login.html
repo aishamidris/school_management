@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Login — School Manager{% endblock %}
+{% block content %}
+<div class="login-wrapper">
+  <div class="card login-card p-4" style="width: 100%; max-width: 400px;">
+    <div class="card-body">
+      <div class="text-center mb-4">
+        <i class="bi bi-mortarboard-fill" style="font-size: 2.5rem; color: #2c5282;"></i>
+        <h4 class="mt-2 mb-0">School Manager</h4>
+        <small class="text-muted">Sign in to your account</small>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.login') }}">
+        <div class="mb-3">
+          <label class="form-label">Email or Phone</label>
+          <input type="text" name="identifier" class="form-control" required autofocus>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" name="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Sign In</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

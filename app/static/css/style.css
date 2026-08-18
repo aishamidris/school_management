@@ -1,0 +1,35 @@
+body {
+  background-color: #f4f6f9;
+}
+
+.stat-card {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.stat-card .stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.stat-card .stat-label {
+  color: #6c757d;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e3a5f, #2c5282);
+}
+
+.login-card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}

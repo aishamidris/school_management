@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h3 class="mb-4">Welcome back, {{ current_user.full_name }}</h3>
+
+<div class="row g-3">
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Active Students</div>
+      <div class="stat-value">{{ stats.total_students }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Active Staff</div>
+      <div class="stat-value">{{ stats.total_staff }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Expected Fees</div>
+      <div class="stat-value">₦{{ "{:,.0f}".format(stats.expected_fees) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Collected</div>
+      <div class="stat-value text-success">₦{{ "{:,.0f}".format(stats.collected_fees) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Outstanding</div>
+      <div class="stat-value text-danger">₦{{ "{:,.0f}".format(stats.outstanding_fees) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Collection Rate</div>
+      <div class="stat-value">{{ stats.collection_rate }}%</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Pending Staff Tasks</div>
+      <div class="stat-value">{{ stats.pending_tasks }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-warning mt-4">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <strong>School Health:</strong> this panel will surface things needing attention —
+  discrepancies, low attendance, overdue tasks, unsubmitted results — once those modules are wired up.
+</div>
+{% endblock %}
