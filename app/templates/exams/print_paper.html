@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ exam.title }} — Question Paper</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@600;700&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { background: #F4F6F5; font-family: 'Work Sans', sans-serif; color: #1B2430; }
+    .brand-font { font-family: 'Zilla Slab', serif; }
+    .paper-box {
+      max-width: 760px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(22,35,63,0.12);
+      padding: 40px 50px;
+    }
+    .paper-header { border-bottom: 3px double #16233F; padding-bottom: 14px; margin-bottom: 20px; }
+    .section-heading {
+      background: #16233F; color: #fff; padding: 6px 14px; border-radius: 4px;
+      font-weight: 600; margin: 22px 0 12px; font-size: 0.95rem;
+    }
+    .q-block { margin-bottom: 16px; }
+    .q-marks { color: #5B6472; font-size: 0.8rem; }
+    .opt-line { padding-left: 20px; margin-bottom: 3px; }
+    .answer-lines { border-bottom: 1px dotted #999; height: 22px; margin-bottom: 4px; }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .paper-box { box-shadow: none; margin: 0; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="paper-box">
+    <div class="text-end no-print mb-3">
+      <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+
+    <div class="text-center paper-header">
+      <h5 class="brand-font mb-1">[Your School Name]</h5>
+      <h6 class="mb-1">{{ exam.title }}</h6>
+      <div class="small text-muted">
+        {{ exam.class_subject.class_arm.display_name }} — {{ exam.class_subject.subject.name }}
+        &middot; {{ exam.term.name }} ({{ exam.term.session.name }})
+        {% if exam.duration_minutes %} &middot; {{ exam.duration_minutes }} minutes{% endif %}
+        &middot; {{ exam.total_marks }} marks
+      </div>
+    </div>
+
+    <p class="small text-muted mb-4">Instructions: Answer all questions. Write clearly.</p>
+
+    {% for section_name, questions in sections.items() %}
+      {% if sections|length > 1 or section_name != 'Ungrouped' %}
+      <div class="section-heading">SECTION {{ section_name }}</div>
+      {% endif %}
+
+      {% for q in questions %}
+      <div class="q-block">
+        <div><strong>{{ loop.index }}.</strong> {{ q.prompt }} <span class="q-marks">({{ q.marks }} mark{{ 's' if q.marks != 1 }})</span></div>
+        {% if q.question_type == 'mcq' %}
+          {% for opt in q.options %}
+          <div class="opt-line">{{ opt.label }}. {{ opt.text }}</div>
+          {% endfor %}
+        {% else %}
+          <div class="answer-lines mt-2"></div>
+          <div class="answer-lines"></div>
+          <div class="answer-lines"></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% endfor %}
+
+    {% if not exam.questions %}
+    <p class="text-muted text-center py-4">No questions have been added to this exam yet.</p>
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Secrets - never commit these
+.env
+
+# Local database
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Uploads (local dev only)
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+
+# Backups
+backups/
+logs/
+
+# OS/editor noise
+.DS_Store
+.vscode/
+.idea/

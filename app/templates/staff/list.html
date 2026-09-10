@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Staff{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-person-badge"></i> Staff</h4>
+  <a href="{{ url_for('staff.create_staff') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Add Staff
+  </a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label small text-muted mb-1">Search</label>
+        <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Name or staff ID">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">Role</label>
+        <select name="role" class="form-select">
+          <option value="all" {% if role_filter == 'all' %}selected{% endif %}>All</option>
+          {% for r in roles %}
+          <option value="{{ r }}" {% if role_filter == r %}selected{% endif %}>{{ r|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-outline-secondary w-100">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr><th></th><th>Staff ID</th><th>Name</th><th>Role</th><th>Designation</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for s in staff_members %}
+        <tr>
+          <td>
+            <span class="avatar-circle avatar-{{ loop.index0 % 3 }}">
+              {{ s.user.full_name.split()[0][0]|upper }}{{ s.user.full_name.split()[-1][0]|upper if s.user.full_name.split()|length > 1 else '' }}
+            </span>
+          </td>
+          <td class="mono">{{ s.staff_id_number }}</td>
+          <td>{{ s.user.full_name }}</td>
+          <td><span class="badge bg-secondary text-capitalize">{{ s.user.role }}</span></td>
+          <td>{{ s.designation or '—' }}</td>
+          <td>
+            {% if s.is_active %}<span class="badge bg-success">Active</span>
+            {% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('staff.view_staff', staff_id=s.id) }}" class="btn btn-sm btn-outline-secondary">View</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No staff records yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

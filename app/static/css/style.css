@@ -1,0 +1,361 @@
+/* ============================================================
+   DESIGN SYSTEM — "The Ledger"
+   ------------------------------------------------------------
+   Grounded in the physical artifacts of school administration:
+   ruled registers, stamped receipts, report-card seals.
+
+   Color
+     --ink        #16233F  navy — sidebar, headings, primary text
+     --chalk      #1F4D3E  deep green — secondary actions, success
+     --gold       #C99A2E  stamp gold — primary CTAs, the seal motif
+     --redpen     #B23A32  red-pen red — errors, alerts (used sparingly)
+     --slate      #5B6472  muted text, labels
+     --paper      #F4F6F5  app background — cool paper, not warm cream
+
+   Type
+     Display : "Zilla Slab"      — headings, brand mark, big numbers
+     Body    : "Work Sans"       — UI text, tables, forms
+     Utility : "IBM Plex Mono"   — admission #, receipt #, staff ID, money
+
+   Signature element: "The Seal" — a stamped circular mark used as the
+   brand glyph, and again on fully-paid receipts, tying every screen
+   back to the idea of an official, verifiable record.
+   ============================================================ */
+
+:root {
+  --ink: #16233F;
+  --ink-light: #22335A;
+  --chalk: #1F4D3E;
+  --gold: #C99A2E;
+  --gold-dark: #A87E1F;
+  --redpen: #B23A32;
+  --slate: #5B6472;
+  --paper: #F4F6F5;
+  --card-white: #FFFFFF;
+  --border-soft: #E2E6E4;
+}
+
+body {
+  background-color: var(--paper);
+  font-family: 'Work Sans', -apple-system, sans-serif;
+  color: #1B2430;
+}
+
+h1, h2, h3, h4, h5, h6, .brand-font {
+  font-family: 'Zilla Slab', Georgia, serif;
+}
+
+.mono, .font-mono {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+}
+
+a { color: var(--ink); }
+a:hover { color: var(--gold-dark); }
+
+/* ---------------- Layout: sidebar shell ---------------- */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--ink);
+  color: #D8DEE9;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-brand .seal-mark { width: 34px; height: 34px; flex-shrink: 0; }
+
+.sidebar-brand-text {
+  font-family: 'Zilla Slab', serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #fff;
+  line-height: 1.15;
+}
+.sidebar-brand-text small {
+  display: block;
+  font-family: 'Work Sans', sans-serif;
+  font-weight: 400;
+  font-size: 0.68rem;
+  color: #9AA5C0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 14px 10px;
+  overflow-y: auto;
+}
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  color: #C3CADC;
+  text-decoration: none;
+  font-size: 0.9rem;
+  border-left: 3px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-nav a:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+.sidebar-nav a.active {
+  background: rgba(201,154,46,0.14);
+  color: #fff;
+  border-left-color: var(--gold);
+}
+.sidebar-nav a i { font-size: 1rem; width: 18px; text-align: center; }
+
+.sidebar-footer {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.8rem;
+}
+.sidebar-footer .role-badge {
+  display: inline-block;
+  background: rgba(201,154,46,0.18);
+  color: var(--gold);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.main-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: var(--card-white);
+  border-bottom: 1px solid var(--border-soft);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.main-content {
+  flex: 1;
+  padding: 28px;
+}
+
+/* Mobile: collapse sidebar off-canvas */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: -240px;
+    z-index: 1050;
+    transition: left 0.2s ease;
+  }
+  .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.25); }
+  .main-content { padding: 18px; }
+  .sidebar-toggle { display: inline-flex !important; }
+}
+.sidebar-toggle { display: none; }
+
+/* ---------------- Cards / stats ---------------- */
+
+.card {
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+}
+
+.stat-card {
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(22,35,63,0.04);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 4px;
+  background: var(--gold);
+}
+.stat-card.stat-green::before { background: var(--chalk); }
+.stat-card.stat-red::before { background: var(--redpen); }
+.stat-card.stat-ink::before { background: var(--ink); }
+
+.stat-card .stat-icon {
+  font-size: 1.3rem;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.stat-card.stat-green .stat-icon { color: var(--chalk); }
+.stat-card.stat-red .stat-icon { color: var(--redpen); }
+.stat-card.stat-ink .stat-icon { color: var(--ink); }
+
+.stat-card .stat-value {
+  font-family: 'Zilla Slab', serif;
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.stat-card .stat-label {
+  color: var(--slate);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---------------- Buttons ---------------- */
+
+.btn-primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #21160A;
+  font-weight: 600;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--gold-dark);
+  border-color: var(--gold-dark);
+  color: #fff;
+}
+.btn-outline-primary {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.btn-outline-primary:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* ---------------- Avatars ---------------- */
+
+.avatar-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-family: 'Zilla Slab', serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.avatar-0 { background: var(--ink); }
+.avatar-1 { background: var(--chalk); }
+.avatar-2 { background: var(--gold-dark); }
+
+/* ---------------- Tables ---------------- */
+
+.table thead.table-light th {
+  background: #EEF1EE;
+  color: var(--slate);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* ---------------- Login page ---------------- */
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+}
+.login-hero {
+  flex: 1.1;
+  background: linear-gradient(160deg, var(--ink) 0%, #1C2E52 55%, var(--chalk) 130%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px;
+  position: relative;
+  overflow: hidden;
+}
+.login-hero .seal-mark { width: 64px; height: 64px; margin-bottom: 28px; }
+.login-hero h1 {
+  font-size: 2.3rem;
+  font-weight: 600;
+  line-height: 1.25;
+  max-width: 460px;
+}
+.login-hero p {
+  color: #B9C2DB;
+  max-width: 420px;
+  margin-top: 14px;
+  font-size: 1rem;
+}
+.login-form-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  padding: 40px;
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+}
+.login-card .form-control {
+  border-color: var(--border-soft);
+  padding: 10px 12px;
+}
+.login-card .form-control:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201,154,46,0.15);
+}
+
+@media (max-width: 860px) {
+  .login-shell { flex-direction: column; }
+  .login-hero { padding: 40px 28px; }
+  .login-hero h1 { font-size: 1.7rem; }
+}
+
+/* ---------------- Receipt "paid" stamp ---------------- */
+
+.paid-stamp {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  width: 100px;
+  height: 100px;
+  transform: rotate(-14deg);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* ---------------- Empty states ---------------- */
+
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--slate);
+}
+.empty-state svg { width: 84px; height: 84px; margin-bottom: 14px; opacity: 0.7; }
+

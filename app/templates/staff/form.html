@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{% if staff %}Edit Staff{% else %}Add Staff{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('staff.list_staff') }}" class="btn btn-sm btn-outline-secondary me-2">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0">{% if staff %}Edit {{ staff.user.full_name }}{% else %}Add New Staff{% endif %}</h4>
+</div>
+
+<form method="POST" class="card">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Full Name *</label>
+        <input type="text" name="full_name" class="form-control" required
+               value="{{ staff.user.full_name if staff else '' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Role {% if not staff %}*{% endif %}</label>
+        {% if staff %}
+        <input type="text" class="form-control" value="{{ staff.user.role|capitalize }}" disabled>
+        <small class="text-muted">Role can't be changed after creation — deactivate and create a new account instead.</small>
+        {% else %}
+        <select name="role" class="form-select" required>
+          <option value="">Select role</option>
+          {% for r in roles %}
+          <option value="{{ r }}">{{ r|capitalize }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control"
+               value="{{ staff.user.email if staff else '' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Phone</label>
+        <input type="text" name="phone" class="form-control"
+               value="{{ staff.user.phone if staff else '' }}">
+      </div>
+      <div class="col-md-12">
+        <label class="form-label">Designation</label>
+        <input type="text" name="designation" class="form-control" placeholder="e.g. Mathematics Teacher, Head Accountant"
+               value="{{ staff.designation if staff else '' }}">
+      </div>
+    </div>
+
+    {% if not staff %}
+    <div class="alert alert-info mt-3 mb-0">
+      <i class="bi bi-info-circle"></i>
+      A login will be created with the default password <strong>ChangeMe123!</strong> — share it securely and have them change it after first login.
+      At least one of email or phone is required so they can sign in.
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-footer text-end bg-white">
+    <a href="{{ url_for('staff.list_staff') }}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">{% if staff %}Save Changes{% else %}Create Staff Account{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

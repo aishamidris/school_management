@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('students.list_students') }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="avatar-circle avatar-0 me-2" style="width:44px; height:44px; font-size:1rem;">
+      {{ student.full_name.split()[0][0]|upper }}{{ student.full_name.split()[-1][0]|upper if student.full_name.split()|length > 1 else '' }}
+    </span>
+    <h4 class="mb-0 brand-font">{{ student.full_name }}</h4>
+    <span class="badge ms-2
+      {% if student.status == 'active' %}bg-success
+      {% elif student.status == 'graduated' %}bg-primary
+      {% elif student.status == 'suspended' %}bg-warning text-dark
+      {% elif student.status == 'withdrawn' %}bg-secondary
+      {% else %}bg-dark{% endif %}">
+      {{ student.status|capitalize }}
+    </span>
+  </div>
+  {% if current_user.role in ['owner', 'admin'] %}
+  <a href="{{ url_for('students.edit_student', student_id=student.id) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-pencil"></i> Edit
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Student Information</h6>
+        <div class="row">
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Admission Number</div>
+            <div>{{ student.admission_number }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Class</div>
+            <div>{{ student.class_arm.display_name if student.class_arm else 'Unassigned' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Date of Birth</div>
+            <div>{{ student.date_of_birth or '—' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Gender</div>
+            <div>{{ student.gender or '—' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Previous School</div>
+            <div>{{ student.previous_school or '—' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Admission Date</div>
+            <div>{{ student.admission_date }}</div>
+          </div>
+          <div class="col-12 mb-3">
+            <div class="text-muted small">Address</div>
+            <div>{{ student.address or '—' }}</div>
+          </div>
+          <div class="col-12">
+            <div class="text-muted small">Medical / Emergency Info</div>
+            <div>{{ student.medical_info or '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Parents / Guardians</h6>
+        {% if student.guardians %}
+          {% for g in student.guardians %}
+          <div class="d-flex justify-content-between border-bottom py-2">
+            <div>
+              <strong>{{ g.parent.user.full_name }}</strong>
+              <span class="text-muted small">({{ g.relationship_type }}{% if g.is_primary_contact %}, primary{% endif %})</span>
+              <div class="text-muted small">{{ g.parent.user.phone }} {% if g.parent.user.email %}· {{ g.parent.user.email }}{% endif %}</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted mb-0">No guardian linked yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    {% if current_user.role in ['owner', 'admin'] %}
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Change Status</h6>
+        <form method="POST" action="{{ url_for('students.change_status', student_id=student.id) }}">
+          <select name="status" class="form-select mb-2">
+            {% for s in ['active', 'graduated', 'withdrawn', 'suspended', 'archived'] %}
+            <option value="{{ s }}" {% if student.status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-dark btn-sm w-100">Update Status</button>
+        </form>
+        <small class="text-muted d-block mt-2">
+          Students are never deleted — status changes preserve full academic and financial history.
+        </small>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-2">Student Login</h6>
+        {% if student.user_id %}
+        <p class="small text-success mb-2"><i class="bi bi-check-circle-fill"></i> Login active</p>
+        <p class="small text-muted mb-2">Username: <strong>{{ student.admission_number }}</strong></p>
+        {% if current_user.role in ['owner', 'admin'] %}
+        <form method="POST" action="{{ url_for('students.reset_login_password', student_id=student.id) }}"
+              onsubmit="return confirm('Reset login password for {{ student.full_name }}?');">
+          <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Reset Password</button>
+        </form>
+        {% endif %}
+        {% else %}
+        <p class="small text-muted mb-2">No login created yet.</p>
+        {% if current_user.role in ['owner', 'admin'] %}
+        <form method="POST" action="{{ url_for('students.create_login', student_id=student.id) }}">
+          <button type="submit" class="btn btn-outline-primary btn-sm w-100">Create Student Login</button>
+        </form>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-2">Attendance (last 30 days)</h6>
+        {% if attendance_summary %}
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fs-4 fw-bold" style="font-family:'Zilla Slab',serif;">{{ attendance_summary.rate }}%</span>
+          <span class="text-muted small">{{ attendance_summary.present }} of {{ attendance_summary.total }} days present</span>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">No attendance recorded in the last 30 days.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-2">Coming soon</h6>
+        <p class="text-muted small mb-0">Results and fee/payment history will appear directly on this profile in a future update — for now, find them under Fees and Results in the sidebar.</p>
+      </div>
+    </div>
+
+    {% if has_perm('audit.view') %}
+    <div class="mt-3">
+      <a href="{{ url_for('audit.list_logs', entity_type='Student', entity_id=student.id) }}" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-clipboard-data"></i> View Audit History
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

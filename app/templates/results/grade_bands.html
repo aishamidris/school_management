@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Grading Scale{% endblock %}
+{% block content %}
+<h4 class="mb-3"><i class="bi bi-sliders"></i> Grading Scale</h4>
+<p class="text-muted">Configure the school's grade boundaries. Scores are matched against these ranges when results are saved.</p>
+
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>Grade</th><th>Min</th><th>Max</th><th>Remark</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for b in bands %}
+            <tr>
+              <td><span class="badge bg-primary">{{ b.grade }}</span></td>
+              <td>{{ b.min_score }}</td>
+              <td>{{ b.max_score }}</td>
+              <td>{{ b.remark or '—' }}</td>
+              <td class="text-end">
+                <form method="POST" action="{{ url_for('results.delete_grade_band', band_id=b.id) }}"
+                      onsubmit="return confirm('Remove grade band {{ b.grade }}?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-4">No grade bands configured yet — add some below.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Add Grade Band</h6>
+        <form method="POST">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small">Min Score</label>
+              <input type="number" step="0.01" name="min_score" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Max Score</label>
+              <input type="number" step="0.01" name="max_score" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Grade Letter</label>
+              <input type="text" name="grade" maxlength="5" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Remark</label>
+              <input type="text" name="remark" class="form-control" placeholder="e.g. Excellent">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mt-3">Add Band</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

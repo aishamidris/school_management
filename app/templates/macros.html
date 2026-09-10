@@ -1,0 +1,19 @@
+{% macro seal(class_name="seal-mark", color="#C99A2E") %}
+<svg viewBox="0 0 64 64" class="{{ class_name }}" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <circle cx="32" cy="32" r="30" stroke="{{ color }}" stroke-width="2.5"/>
+  <circle cx="32" cy="32" r="23" stroke="{{ color }}" stroke-width="1" stroke-dasharray="1.5 3.5"/>
+  <path d="M32 17 L37.5 25.5 L47 27 L40 33.5 L41.8 43 L32 38.2 L22.2 43 L24 33.5 L17 27 L26.5 25.5 Z"
+        fill="{{ color }}"/>
+</svg>
+{% endmacro %}
+
+{% macro paid_stamp() %}
+<svg viewBox="0 0 100 100" class="paid-stamp" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <circle cx="50" cy="50" r="46" stroke="#1F4D3E" stroke-width="3"/>
+  <circle cx="50" cy="50" r="38" stroke="#1F4D3E" stroke-width="1.5" stroke-dasharray="2 3"/>
+  <text x="50" y="46" text-anchor="middle" font-family="'Zilla Slab', serif" font-weight="700"
+        font-size="17" fill="#1F4D3E" letter-spacing="1">PAID</text>
+  <text x="50" y="62" text-anchor="middle" font-family="'Work Sans', sans-serif"
+        font-size="6.5" fill="#1F4D3E" letter-spacing="2">IN FULL</text>
+</svg>
+{% endmacro %}

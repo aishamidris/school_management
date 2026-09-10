@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ staff.user.full_name }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('staff.list_staff') }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="avatar-circle avatar-1 me-2" style="width:44px; height:44px; font-size:1rem;">
+      {{ staff.user.full_name.split()[0][0]|upper }}{{ staff.user.full_name.split()[-1][0]|upper if staff.user.full_name.split()|length > 1 else '' }}
+    </span>
+    <h4 class="mb-0 brand-font">{{ staff.user.full_name }}</h4>
+    <span class="badge bg-secondary text-capitalize ms-2">{{ staff.user.role }}</span>
+    {% if staff.is_active %}<span class="badge bg-success">Active</span>
+    {% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+  </div>
+  <a href="{{ url_for('staff.edit_staff', staff_id=staff.id) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-pencil"></i> Edit
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Staff Information</h6>
+        <div class="row">
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Staff ID</div>
+            <div>{{ staff.staff_id_number }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Designation</div>
+            <div>{{ staff.designation or '—' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Email</div>
+            <div>{{ staff.user.email or '—' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Phone</div>
+            <div>{{ staff.user.phone or '—' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Date Employed</div>
+            <div>{{ staff.date_employed or '—' }}</div>
+          </div>
+          <div class="col-6 mb-3">
+            <div class="text-muted small">Last Login</div>
+            <div>{{ staff.user.last_login_at.strftime('%d %b %Y, %I:%M %p') if staff.user.last_login_at else 'Never' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Account Actions</h6>
+
+        <form method="POST" action="{{ url_for('staff.toggle_active', staff_id=staff.id) }}" class="mb-2"
+              onsubmit="return confirm('{% if staff.is_active %}Deactivate{% else %}Reactivate{% endif %} {{ staff.user.full_name }}\'s account?');">
+          <button type="submit" class="btn btn-sm w-100 {% if staff.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+            {% if staff.is_active %}Deactivate Account{% else %}Reactivate Account{% endif %}
+          </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('staff.reset_password', staff_id=staff.id) }}"
+              onsubmit="return confirm('Reset password for {{ staff.user.full_name }}? A new temporary password will be generated.');">
+          <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Reset Password</button>
+        </form>
+
+        <small class="text-muted d-block mt-2">
+          Deactivating blocks login without deleting any history — results, payments, and tasks tied to this staff member remain intact.
+        </small>
+      </div>
+    </div>
+
+    {% if has_perm('audit.view') %}
+    <div class="mt-3">
+      <a href="{{ url_for('audit.list_logs', entity_type='Staff', entity_id=staff.id) }}" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-clipboard-data"></i> View Audit History
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

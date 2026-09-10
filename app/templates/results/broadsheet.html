@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Broadsheet — {{ class_arm.display_name }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('results.broadsheet_picker') }}" class="btn btn-sm btn-outline-secondary me-2">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0">{{ class_arm.display_name }} Broadsheet — {{ term.name }} ({{ term.session.name }})</h4>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle mb-0" style="font-size: 0.85rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="min-width: 180px;">Student</th>
+          {% for cs in class_subjects %}
+          <th class="text-center">{{ cs.subject.name }}</th>
+          {% endfor %}
+          <th class="text-center">Average</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+        <tr>
+          <td>{{ student.full_name }}</td>
+          {% set ns = namespace(total=0, count=0) %}
+          {% for cs in class_subjects %}
+          {% set result = grid.get(student.id, {}).get(cs.id) %}
+          <td class="text-center">
+            {% if result %}
+              {{ result.total_score }} <span class="badge bg-light text-dark border">{{ result.grade or '—' }}</span>
+              {% set ns.total = ns.total + result.total_score %}
+              {% set ns.count = ns.count + 1 %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="text-center fw-bold">
+            {% if ns.count > 0 %}{{ "%.1f"|format(ns.total / ns.count) }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ class_subjects|length + 2 }}" class="text-center text-muted py-4">No active students in this class.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if not class_subjects %}
+<div class="alert alert-warning mt-3">
+  No subjects have been assigned to this class yet — set that up in Class & Subject management first.
+</div>
+{% endif %}
+{% endblock %}

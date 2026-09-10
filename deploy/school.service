@@ -1,0 +1,30 @@
+# Template systemd service. Copy to /etc/systemd/service/school.service on
+# the server, then edit the paths/user below to match your actual setup.
+#
+# After editing, run:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable school
+#   sudo systemctl start school
+#   sudo systemctl status school     # check it's running
+#   sudo journalctl -u school -f     # tail live logs
+
+[Unit]
+Description=School Management gunicorn daemon
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/school_management
+Environment="PATH=/var/www/school_management/venv/bin"
+ExecStart=/var/www/school_management/venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/var/www/school_management/school.sock \
+    --access-logfile /var/www/school_management/logs/access.log \
+    --error-logfile /var/www/school_management/logs/error.log \
+    wsgi:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

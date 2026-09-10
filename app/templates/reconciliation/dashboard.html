@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Reconciliation{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-shield-check"></i> Financial Reconciliation</h4>
+  <form method="GET" class="d-flex">
+    <select name="term_id" class="form-select form-select-sm" onchange="this.form.submit()">
+      {% for t in all_terms %}
+      <option value="{{ t.id }}" {% if term and term.id == t.id %}selected{% endif %}>{{ t.session.name }} — {{ t.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+{% if not term %}
+<div class="alert alert-warning">No term selected or available.</div>
+{% else %}
+
+{% if discrepancy_count > 0 %}
+<div class="alert alert-danger d-flex align-items-center">
+  <i class="bi bi-exclamation-triangle-fill fs-4 me-2"></i>
+  <div>
+    <strong>{{ discrepancy_count }} item(s) flagged for review</strong> —
+    {{ invoice_discrepancies|length }} invoice discrepanc{{ 'y' if invoice_discrepancies|length == 1 else 'ies' }},
+    {{ voided_payments|length }} voided payment{{ 's' if voided_payments|length != 1 else '' }}.
+    See details below.
+  </div>
+</div>
+{% else %}
+<div class="alert alert-success d-flex align-items-center">
+  <i class="bi bi-check-circle-fill fs-4 me-2"></i>
+  <div>No discrepancies found for {{ term.name }}. Records are clean.</div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Expected</div>
+      <div class="stat-value">₦{{ "{:,.0f}".format(total_expected) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Collected</div>
+      <div class="stat-value text-success">₦{{ "{:,.0f}".format(total_collected) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Outstanding</div>
+      <div class="stat-value text-danger">₦{{ "{:,.0f}".format(total_outstanding) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-label">Collection Rate</div>
+      <div class="stat-value">{{ collection_rate }}%</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-white">
+    <strong><i class="bi bi-flag-fill text-danger"></i> Invoice Discrepancies</strong>
+    <span class="text-muted small">— stored invoice amount doesn't match the fee structure for that class</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Student</th><th>Invoice Amount</th><th>Fee Structure Amount</th><th>Difference</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for d in invoice_discrepancies %}
+        <tr>
+          <td>{{ d.invoice.student.full_name }}</td>
+          <td>₦{{ "{:,.0f}".format(d.invoice.expected_amount) }}</td>
+          <td>₦{{ "{:,.0f}".format(d.structure_total) }}</td>
+          <td class="{% if d.difference > 0 %}text-danger{% else %}text-warning{% endif %} fw-bold">
+            {{ "+" if d.difference > 0 }}₦{{ "{:,.0f}".format(d.difference) }}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('finance.view_invoice', invoice_id=d.invoice.id) }}" class="btn btn-sm btn-outline-secondary">View</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-3">None found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-white">
+    <strong><i class="bi bi-x-octagon-fill text-danger"></i> Voided Payments</strong>
+    <span class="text-muted small">— payments that were recorded then reversed, with the reason on file</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Student</th><th>Amount</th><th>Recorded By</th><th>Voided By</th><th>Reason</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for p in voided_payments %}
+        <tr>
+          <td>{{ p.invoice.student.full_name }}</td>
+          <td>₦{{ "{:,.0f}".format(p.amount) }}</td>
+          <td>{{ p.recorded_by.full_name }}</td>
+          <td>{{ p.voided_by.full_name if p.voided_by else '—' }}</td>
+          <td class="small">{{ p.void_reason }}</td>
+          <td class="small">{{ p.voided_at.strftime('%d %b %Y') if p.voided_at else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-3">None found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white">
+    <strong><i class="bi bi-person-lines-fill"></i> Accountant Activity</strong>
+    <span class="text-muted small">— this term</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Accountant</th><th>Payments Recorded</th><th>Total Collected</th><th>Voided (by owner/admin)</th></tr>
+      </thead>
+      <tbody>
+        {% for a in accountant_activity %}
+        <tr>
+          <td>{{ a.staff.user.full_name }}</td>
+          <td>{{ a.payment_count }}</td>
+          <td>₦{{ "{:,.0f}".format(a.total_collected) }}</td>
+          <td>
+            {% if a.voided_count > 0 %}<span class="badge bg-warning text-dark">{{ a.voided_count }}</span>
+            {% else %}0{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted py-3">No accountant accounts yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

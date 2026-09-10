@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Assign Subjects{% endblock %}
+{% block content %}
+<h4 class="mb-3"><i class="bi bi-diagram-3"></i> Assign Subjects to Classes</h4>
+
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>Class</th><th>Subject</th><th style="width:220px;">Teacher</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for a in assignments %}
+            <tr>
+              <td>{{ a.class_arm.display_name }}</td>
+              <td>{{ a.subject.name }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('results.set_teacher', class_subject_id=a.id) }}" class="d-flex gap-1">
+                  <select name="teacher_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">— Unassigned —</option>
+                    {% for t in teachers %}
+                    <option value="{{ t.id }}" {% if a.teacher_id == t.id %}selected{% endif %}>{{ t.user.full_name }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td class="text-end">
+                <form method="POST" action="{{ url_for('results.remove_assignment', class_subject_id=a.id) }}"
+                      onsubmit="return confirm('Remove this assignment?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No subjects assigned yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-2">Add New Subject</h6>
+        <form method="POST" action="{{ url_for('results.create_subject') }}" class="row g-2">
+          <div class="col-8">
+            <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Numeracy, Phonics" required>
+          </div>
+          <div class="col-4">
+            <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Add</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">New Assignment</h6>
+        <form method="POST">
+          <div class="mb-2">
+            <label class="form-label small">Class</label>
+            <select name="class_arm_id" class="form-select" required>
+              <option value="">Select class</option>
+              {% for arm in class_arms %}
+              <option value="{{ arm.id }}">{{ arm.display_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Subject</label>
+            <select name="subject_id" class="form-select" required>
+              <option value="">Select subject</option>
+              {% for s in subjects %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Teacher (optional)</label>
+            <select name="teacher_id" class="form-select">
+              <option value="">Unassigned</option>
+              {% for t in teachers %}
+              <option value="{{ t.id }}">{{ t.user.full_name }}</option>
+              {% endfor %}
+            </select>
+            {% if not teachers %}
+            <small class="text-muted d-block mt-1">No teacher accounts exist yet — Staff management is coming soon. You can assign subjects without a teacher for now.</small>
+            {% endif %}
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Assign</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

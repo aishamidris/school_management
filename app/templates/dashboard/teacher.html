@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h4 class="brand-font mb-1">Welcome, {{ current_user.full_name }}</h4>
+<p class="text-muted mb-4">Here's your teaching overview.</p>
+
+{% if not class_subjects %}
+<div class="alert alert-info">
+  You haven't been assigned any classes yet. Ask an admin to assign you a subject under Results → Assign Subjects.
+</div>
+{% else %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-sm-6">
+    <div class="card stat-card stat-ink p-3">
+      <div class="stat-icon"><i class="bi bi-journal-check"></i></div>
+      <div class="stat-label">Classes / Subjects</div>
+      <div class="stat-value">{{ class_subjects|length }}</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+      <div class="stat-label">Total Students</div>
+      <div class="stat-value">{{ total_students }}</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="card stat-card stat-red p-3">
+      <div class="stat-icon"><i class="bi bi-calendar-event"></i></div>
+      <div class="stat-label">Exams With Deadlines</div>
+      <div class="stat-value">{{ exams_due|length }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header bg-white"><strong>My Classes</strong></div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="table-light"><tr><th>Class</th><th>Subject</th><th></th></tr></thead>
+          <tbody>
+            {% for cs in class_subjects %}
+            <tr>
+              <td>{{ cs.class_arm.display_name }}</td>
+              <td>{{ cs.subject.name }}</td>
+              <td class="text-end">
+                <a href="{{ url_for('results.enter_results', class_subject_id=cs.id) }}" class="btn btn-sm btn-outline-secondary">Enter Results</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header bg-white"><strong>Exam Question Deadlines</strong></div>
+      <div class="list-group list-group-flush">
+        {% for exam in exams_due %}
+        <a href="{{ url_for('exams.view_exam', exam_id=exam.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+          <div>
+            <div>{{ exam.title }}</div>
+            <div class="text-muted small">{{ exam.class_subject.class_arm.display_name }} — {{ exam.class_subject.subject.name }}</div>
+          </div>
+          <span class="badge {% if exam.question_deadline < today %}bg-danger{% else %}bg-secondary{% endif %}">
+            {{ exam.question_deadline.strftime('%d %b') }}
+          </span>
+        </a>
+        {% else %}
+        <div class="list-group-item text-center text-muted py-4">No deadlines set.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+      <a href="{{ url_for('attendance.class_picker') }}" class="btn btn-outline-secondary btn-sm flex-fill">
+        <i class="bi bi-calendar-check"></i> Mark Attendance
+      </a>
+      <a href="{{ url_for('exams.list_exams') }}" class="btn btn-outline-secondary btn-sm flex-fill">
+        <i class="bi bi-file-earmark-text-fill"></i> Exams
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

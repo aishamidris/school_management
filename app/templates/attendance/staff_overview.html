@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Staff Attendance{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 brand-font"><i class="bi bi-people-fill"></i> Staff Attendance</h4>
+  <form method="GET" class="d-flex align-items-center gap-2">
+    <input type="date" name="date" value="{{ selected_date.isoformat() }}" class="form-control form-control-sm" style="width:160px;" onchange="this.form.submit()">
+  </form>
+</div>
+
+<div class="alert alert-secondary py-2 small mb-3">
+  <i class="bi bi-info-circle"></i> {{ present_count }} of {{ total_staff }} staff checked in as present on {{ selected_date.strftime('%d %b %Y') }}.
+  This reflects each staff member's own check-in — it isn't editable from here.
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Staff</th><th>Role</th><th>Status</th><th>Check In</th><th>Check Out</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.staff.user.full_name }}</td>
+          <td><span class="badge bg-secondary text-capitalize">{{ row.staff.user.role }}</span></td>
+          <td>
+            {% if row.record %}
+            <span class="badge
+              {% if row.record.status == 'present' %}bg-success
+              {% elif row.record.status == 'absent' %}bg-danger
+              {% elif row.record.status == 'late' %}bg-warning text-dark
+              {% else %}bg-secondary{% endif %}">
+              {{ row.record.status|capitalize }}
+            </span>
+            {% else %}
+            <span class="badge bg-light text-dark">Not checked in</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ row.record.check_in.strftime('%H:%M') if row.record and row.record.check_in else '—' }}</td>
+          <td class="small">{{ row.record.check_out.strftime('%H:%M') if row.record and row.record.check_out else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No active staff records.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

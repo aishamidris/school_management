@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h4 class="brand-font mb-1">Welcome, {{ current_user.full_name }}</h4>
+<p class="text-muted mb-4">{% if term %}Showing {{ term.name }} ({{ term.session.name }}){% else %}No current term is set{% endif %}</p>
+
+{% if not term %}
+<div class="alert alert-warning">Ask an admin to mark a term as current before recording payments.</div>
+{% else %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-sm-6">
+    <div class="card stat-card stat-green p-3">
+      <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="stat-label">Collected Today (by you)</div>
+      <div class="stat-value mono" style="font-size:1.5rem;">₦{{ "{:,.0f}".format(today_total) }}</div>
+      <div class="text-muted small">{{ today_count }} payment{{ 's' if today_count != 1 }}</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="card stat-card stat-red p-3">
+      <div class="stat-icon"><i class="bi bi-exclamation-circle-fill"></i></div>
+      <div class="stat-label">Total Outstanding</div>
+      <div class="stat-value mono" style="font-size:1.5rem;">₦{{ "{:,.0f}".format(outstanding_total) }}</div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="card stat-card p-3">
+      <div class="stat-icon"><i class="bi bi-receipt"></i></div>
+      <div class="stat-label">Invoices This Term</div>
+      <div class="stat-value">{{ invoice_count }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex gap-2">
+  <a href="{{ url_for('finance.list_invoices') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-receipt"></i> View Invoices
+  </a>
+  <a href="{{ url_for('finance.list_fee_structures') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-cash-stack"></i> Fee Structures
+  </a>
+</div>
+{% endif %}
+{% endblock %}

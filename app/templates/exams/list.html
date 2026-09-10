@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Exams{% endblock %}
+{% block page_eyebrow %}Exams{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-file-earmark-text-fill"></i> Exams &amp; Question Setup</h4>
+  <a href="{{ url_for('exams.create_exam') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> New Exam
+  </a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Title</th><th>Class</th><th>Subject</th><th>Type</th><th>Questions</th><th>Deadline</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for exam in exams %}
+        <tr>
+          <td>{{ exam.title }}</td>
+          <td>{{ exam.class_subject.class_arm.display_name }}</td>
+          <td>{{ exam.class_subject.subject.name }}</td>
+          <td class="text-capitalize">{{ exam.assessment_type|replace('_', ' ') }}</td>
+          <td>{{ exam.questions|length }}</td>
+          <td>
+            {% if exam.question_deadline %}
+              {% if exam.question_deadline < today %}
+              <span class="badge bg-danger">Overdue — {{ exam.question_deadline.strftime('%d %b') }}</span>
+              {% else %}
+              <span class="badge bg-secondary">Due {{ exam.question_deadline.strftime('%d %b') }}</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('exams.view_exam', exam_id=exam.id) }}" class="btn btn-sm btn-outline-secondary">Open</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No exams set up yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

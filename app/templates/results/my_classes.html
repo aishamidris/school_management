@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}My Classes{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-journal-check"></i> {% if current_user.role == 'teacher' %}My Classes{% else %}All Class Subjects{% endif %}</h4>
+  <div>
+    {% if current_user.role in ['owner', 'admin'] %}
+    <a href="{{ url_for('results.assign_subjects') }}" class="btn btn-outline-secondary btn-sm me-2">Assign Subjects</a>
+    <a href="{{ url_for('results.grade_bands') }}" class="btn btn-outline-secondary btn-sm me-2">Grading Scale</a>
+    {% endif %}
+    <a href="{{ url_for('results.broadsheet_picker') }}" class="btn btn-outline-secondary btn-sm">View Broadsheet</a>
+  </div>
+</div>
+
+{% if term %}
+<p class="text-muted">Entering results for <strong>{{ term.name }}</strong> ({{ term.session.name }}).</p>
+{% else %}
+<div class="alert alert-warning">No current term is set — ask an admin to mark a term as current before entering results.</div>
+{% endif %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Subject</th><th>Class</th><th>Teacher</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for cs in class_subjects %}
+        <tr>
+          <td>{{ cs.subject.name }}</td>
+          <td>{{ cs.class_arm.display_name }}</td>
+          <td>{{ cs.teacher.user.full_name if cs.teacher else '—' }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('results.enter_results', class_subject_id=cs.id) }}" class="btn btn-sm btn-primary">Enter Results</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted py-4">No class-subject assignments yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

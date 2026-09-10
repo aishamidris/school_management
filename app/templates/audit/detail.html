@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Audit Entry #{{ log.id }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('audit.list_logs') }}" class="btn btn-sm btn-outline-secondary me-2">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0 brand-font">Audit Entry #{{ log.id }}</h4>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-3 mb-3">
+        <div class="text-muted small">When</div>
+        <div class="mono">{{ log.created_at.strftime('%d %b %Y %H:%M:%S') }}</div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="text-muted small">Actor</div>
+        <div>{{ log.actor_name or '—' }} <span class="badge bg-secondary text-capitalize">{{ log.actor_role }}</span></div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="text-muted small">Action</div>
+        <div><span class="badge bg-light text-dark border mono">{{ log.action }}</span></div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="text-muted small">Entity</div>
+        <div>
+          {{ log.entity_type }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}
+          {% if log.entity_id %}
+          <a href="{{ url_for('audit.list_logs', entity_type=log.entity_type, entity_id=log.entity_id) }}" class="small ms-1">(full history)</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="text-muted small">Description</div>
+        <div>{{ log.description or '—' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white"><strong>Before</strong></div>
+      <div class="card-body">
+        {% if before %}
+        <pre class="mono small mb-0" style="white-space: pre-wrap;">{{ before }}</pre>
+        {% else %}
+        <p class="text-muted small mb-0">No prior state recorded (likely a new record).</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white"><strong>After</strong></div>
+      <div class="card-body">
+        {% if after %}
+        <pre class="mono small mb-0" style="white-space: pre-wrap;">{{ after }}</pre>
+        {% else %}
+        <p class="text-muted small mb-0">No new state recorded.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

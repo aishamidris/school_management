@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{{ exam.title }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('exams.list_exams') }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4 class="mb-0 brand-font">{{ exam.title }}</h4>
+      <span class="text-muted small">{{ exam.class_subject.class_arm.display_name }} — {{ exam.class_subject.subject.name }}
+        {% if exam.class_subject.teacher %} &middot; {{ exam.class_subject.teacher.user.full_name }}{% endif %}</span>
+    </div>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge bg-secondary">{{ exam.questions|length }} question(s) &middot; {{ total_question_marks }} / {{ exam.total_marks }} marks</span>
+    <a href="{{ url_for('exams.print_paper', exam_id=exam.id) }}" class="btn btn-sm btn-outline-secondary" target="_blank">
+      <i class="bi bi-printer"></i> Print
+    </a>
+    <a href="{{ url_for('exams.print_answer_key', exam_id=exam.id) }}" class="btn btn-sm btn-outline-secondary" target="_blank">
+      <i class="bi bi-key"></i> Answer Key
+    </a>
+    {% if current_user.role in ['owner', 'admin'] %}
+    <form method="POST" action="{{ url_for('exams.delete_exam', exam_id=exam.id) }}"
+          onsubmit="return confirm('Delete this exam and all {{ exam.questions|length }} question(s)? This cannot be undone.');">
+      <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete Exam</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if current_user.role in ['owner', 'admin'] %}
+<div class="card mb-3">
+  <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+    <span class="small text-muted mb-0"><i class="bi bi-calendar-event"></i> <strong>Question deadline:</strong></span>
+    <form method="POST" action="{{ url_for('exams.set_deadline', exam_id=exam.id) }}" class="d-flex align-items-center gap-2">
+      <input type="date" name="question_deadline" class="form-control form-control-sm"
+             value="{{ exam.question_deadline.isoformat() if exam.question_deadline else '' }}" style="width:160px;">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Save</button>
+    </form>
+    {% if exam.question_deadline %}
+      {% if exam.question_deadline < today %}
+      <span class="badge bg-danger">Overdue</span>
+      {% else %}
+      <span class="badge bg-success">On track</span>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% elif exam.question_deadline %}
+<div class="alert {% if exam.question_deadline < today %}alert-danger{% else %}alert-secondary{% endif %} py-2 small mb-3">
+  <i class="bi bi-calendar-event"></i> Questions due by <strong>{{ exam.question_deadline.strftime('%d %b %Y') }}</strong>
+  {% if exam.question_deadline < today %} — this is overdue.{% endif %}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header bg-white"><strong>Questions</strong></div>
+      {% for section_name, questions in sections.items() %}
+        {% if sections|length > 1 or section_name != 'Ungrouped' %}
+        <div class="px-3 pt-3 pb-1">
+          <span class="badge" style="background: var(--ink);">SECTION {{ section_name }}</span>
+        </div>
+        {% endif %}
+        <div class="list-group list-group-flush">
+          {% for q in questions %}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <div class="flex-grow-1">
+                <span class="badge {% if q.question_type == 'mcq' %}bg-primary{% else %}bg-secondary{% endif %} mb-1">
+                  {{ 'MCQ' if q.question_type == 'mcq' else 'Theory' }} &middot; {{ q.marks }} mark{{ 's' if q.marks != 1 }}
+                </span>
+                <p class="mb-2">{{ loop.index }}. {{ q.prompt }}</p>
+                {% if q.question_type == 'mcq' %}
+                <ul class="list-unstyled small mb-0">
+                  {% for opt in q.options %}
+                  <li class="{% if opt.is_correct %}text-success fw-bold{% endif %}">
+                    {% if opt.is_correct %}<i class="bi bi-check-circle-fill"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}
+                    {{ opt.label }}. {{ opt.text }}
+                  </li>
+                  {% endfor %}
+                </ul>
+                {% if not q.options|selectattr('is_correct')|list %}
+                <p class="small text-danger mb-0 mt-1"><i class="bi bi-exclamation-triangle"></i> No correct option marked yet.</p>
+                {% endif %}
+                {% else %}
+                <p class="small text-muted mb-0"><strong>Marking guide:</strong> {{ q.marking_guide or '— not provided —' }}</p>
+                {% endif %}
+              </div>
+              <form method="POST" action="{{ url_for('exams.delete_question', exam_id=exam.id, question_id=q.id) }}"
+                    onsubmit="return confirm('Remove this question?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+      <div class="list-group-item text-center text-muted py-4">No questions yet — paste some or add one manually.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-md-5">
+    <div class="card mb-3">
+      <div class="card-header bg-white"><strong><i class="bi bi-clipboard-plus"></i> Paste Questions</strong></div>
+      <div class="card-body">
+        <p class="small text-muted">
+          Paste multiple questions at once. Number each question, list options as A/B/C/D, and mark the
+          correct one with <span class="mono">Answer: B</span>. Questions without options become theory —
+          add an <span class="mono">Answer:</span> line as the marking guide instead.
+        </p>
+        <p class="small text-muted">
+          For a multi-section exam scored differently per section, either fill in
+          <strong>Section name</strong> + <strong>Score for this paste</strong> below and paste one section
+          at a time — or embed headers right in the text: <span class="mono">SECTION A [2 marks each]</span>,
+          then <span class="mono">SECTION B [10 marks each]</span>, all in one paste.
+        </p>
+        <form method="POST" action="{{ url_for('exams.paste_questions', exam_id=exam.id) }}">
+          <div class="row g-2 mb-2">
+            <div class="col-7">
+              <label class="form-label small mb-1">Section name (optional)</label>
+              <input type="text" name="section_name" class="form-control form-control-sm" placeholder="e.g. A">
+            </div>
+            <div class="col-5">
+              <label class="form-label small mb-1">Score for this paste</label>
+              <input type="number" step="0.5" name="default_marks" class="form-control form-control-sm" placeholder="e.g. 2">
+            </div>
+          </div>
+          <textarea name="raw_text" class="form-control mono" rows="9" style="font-size:0.82rem;"
+                    placeholder="1. What is the powerhouse of the cell?&#10;A. Nucleus&#10;B. Mitochondria&#10;C. Ribosome&#10;D. Golgi apparatus&#10;Answer: B&#10;&#10;2. Explain the water cycle.&#10;Answer: Should mention evaporation, condensation, precipitation."></textarea>
+          <button type="submit" class="btn btn-primary w-100 mt-2">Parse &amp; Add Questions</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bg-white"><strong><i class="bi bi-plus-circle"></i> Add One Question</strong></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('exams.add_question', exam_id=exam.id) }}" id="singleQuestionForm">
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small">Type</label>
+              <select name="question_type" class="form-select form-select-sm" id="qType" onchange="toggleQType()">
+                <option value="mcq">Multiple Choice</option>
+                <option value="theory">Theory</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Section (optional)</label>
+              <input type="text" name="section" class="form-control form-control-sm" placeholder="e.g. A">
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Question</label>
+            <textarea name="prompt" class="form-control form-control-sm" rows="2" required></textarea>
+          </div>
+
+          <div id="mcqFields">
+            {% for label in ['A', 'B', 'C', 'D'] %}
+            <div class="input-group input-group-sm mb-1">
+              <span class="input-group-text">
+                <input type="radio" name="correct_option" value="{{ label }}" {% if label == 'A' %}checked{% endif %}>
+              </span>
+              <span class="input-group-text">{{ label }}</span>
+              <input type="text" name="option_{{ label }}" class="form-control" placeholder="Option {{ label }}">
+            </div>
+            {% endfor %}
+            <small class="text-muted d-block mb-2">Select the radio button next to the correct option.</small>
+          </div>
+
+          <div id="theoryFields" style="display:none;">
+            <label class="form-label small">Marking Guide</label>
+            <textarea name="marking_guide" class="form-control form-control-sm mb-2" rows="2"></textarea>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small">Marks</label>
+            <input type="number" step="0.5" name="marks" class="form-control form-control-sm" value="1">
+          </div>
+
+          <button type="submit" class="btn btn-outline-primary btn-sm w-100">Add Question</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleQType() {
+  const isMcq = document.getElementById('qType').value === 'mcq';
+  document.getElementById('mcqFields').style.display = isMcq ? 'block' : 'none';
+  document.getElementById('theoryFields').style.display = isMcq ? 'none' : 'block';
+}
+</script>
+{% endblock %}
