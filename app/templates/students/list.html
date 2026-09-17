@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros.html" as m %}
 {% block title %}Students{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -60,9 +61,7 @@
         {% for student in students %}
         <tr>
           <td>
-            <span class="avatar-circle avatar-{{ loop.index0 % 3 }}">
-              {{ student.full_name.split()[0][0]|upper }}{{ student.full_name.split()[-1][0]|upper if student.full_name.split()|length > 1 else '' }}
-            </span>
+            {{ m.avatar(student.full_name, student.photo_path, 'sm') }}
           </td>
           <td class="mono">{{ student.admission_number }}</td>
           <td>{{ student.full_name }}</td>

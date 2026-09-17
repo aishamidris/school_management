@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+
+<div class="profile-header">
+  {% if record %}
+  <form method="POST" action="{{ url_for('profile.upload_photo') }}" enctype="multipart/form-data" id="photoForm">
+    <div class="photo-upload-widget">
+      {{ m.avatar(current_user.full_name, current_user.profile_photo_path, 'lg') }}
+      <label class="photo-edit-btn" for="photoInput" title="Change photo"><i class="bi bi-camera-fill"></i></label>
+      <input type="file" id="photoInput" name="photo" accept="image/png,image/jpeg,image/gif,image/webp" hidden onchange="document.getElementById('photoForm').submit()">
+    </div>
+  </form>
+  {% else %}
+  {{ m.avatar(current_user.full_name, None, 'lg') }}
+  {% endif %}
+
+  <div>
+    <h4 class="brand-font mb-1">{{ current_user.full_name }}</h4>
+    <div class="profile-id">
+      {% if current_user.role == 'student' and record %}
+        {{ record.admission_number }}
+        {% if record.class_arm %} &middot; {{ record.class_arm.display_name }}{% endif %}
+      {% elif record %}
+        {{ record.staff_id_number or 'No staff ID on file' }}
+        {% if record.designation %} &middot; {{ record.designation }}{% endif %}
+      {% else %}
+        {{ current_user.email or current_user.phone or '' }}
+      {% endif %}
+    </div>
+    <span class="role-badge">{{ current_user.role }}</span>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white"><strong><i class="bi bi-person-lines-fill"></i> Contact Details</strong></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('profile.update_contact') }}">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ current_user.email or '' }}" placeholder="you@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Phone</label>
+            <input type="text" name="phone" class="form-control" value="{{ current_user.phone or '' }}" placeholder="080...">
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Save Contact Details</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white"><strong><i class="bi bi-shield-lock-fill"></i> Change Password</strong></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('profile.change_password') }}">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Current Password</label>
+            <input type="password" name="current_password" class="form-control" required>
+          </div>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label class="form-label small text-muted">New Password</label>
+              <input type="password" name="new_password" class="form-control" minlength="8" required>
+            </div>
+            <div class="col-6 mb-3">
+              <label class="form-label small text-muted">Confirm New Password</label>
+              <input type="password" name="confirm_password" class="form-control" minlength="8" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-primary btn-sm">Change Password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if current_user.role == 'student' and record %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-journal-check"></i> My Results {% if term %}— {{ term.name }}{% endif %}</strong>
+        {% if results %}
+        <a href="{{ url_for('profile.download_results') }}" class="btn btn-sm btn-primary">
+          <i class="bi bi-download"></i> Download Result (PDF)
+        </a>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if not term %}
+        <p class="text-muted mb-0">No current term is set yet — check back once the school starts a new term.</p>
+        {% elif results %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-2">
+            <thead class="table-light"><tr><th>Subject</th><th class="text-end">CA</th><th class="text-end">Exam</th><th class="text-end">Total</th><th class="text-end">Grade</th></tr></thead>
+            <tbody>
+              {% for r in results %}
+              <tr>
+                <td>{{ r.class_subject.subject.name }}</td>
+                <td class="text-end">{{ r.ca_score }}</td>
+                <td class="text-end">{{ r.exam_score }}</td>
+                <td class="text-end">{{ r.total_score }}</td>
+                <td class="text-end"><span class="badge bg-primary">{{ r.grade or '—' }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if average is not none %}
+        <div class="text-end"><strong>Average: {{ average }}</strong></div>
+        {% endif %}
+        {% else %}
+        <p class="text-muted mb-0">No results have been entered for this term yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

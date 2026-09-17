@@ -7,6 +7,18 @@
 </svg>
 {% endmacro %}
 
+{% macro avatar(name, photo_path=None, size='md') %}
+{% set dims = {'sm': 32, 'md': 44, 'lg': 96} %}
+{% set px = dims.get(size, 44) %}
+{% set parts = name.split() if name else [] %}
+{% set initials = (parts[0][0] if parts else '?') ~ (parts[-1][0] if parts|length > 1 else '') %}
+{% if photo_path %}
+<img src="{{ url_for('static', filename=photo_path) }}" class="avatar-photo avatar-{{ size }}" style="width:{{ px }}px;height:{{ px }}px;" alt="{{ name }}">
+{% else %}
+<span class="avatar-circle avatar-0" style="width:{{ px }}px;height:{{ px }}px;font-size:{{ (px/2.6)|round(1) }}px;">{{ initials|upper }}</span>
+{% endif %}
+{% endmacro %}
+
 {% macro paid_stamp() %}
 <svg viewBox="0 0 100 100" class="paid-stamp" xmlns="http://www.w3.org/2000/svg" fill="none">
   <circle cx="50" cy="50" r="46" stroke="#1F4D3E" stroke-width="3"/>

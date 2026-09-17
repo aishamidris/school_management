@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros.html" as m %}
 {% block title %}Staff{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -41,9 +42,7 @@
         {% for s in staff_members %}
         <tr>
           <td>
-            <span class="avatar-circle avatar-{{ loop.index0 % 3 }}">
-              {{ s.user.full_name.split()[0][0]|upper }}{{ s.user.full_name.split()[-1][0]|upper if s.user.full_name.split()|length > 1 else '' }}
-            </span>
+            {{ m.avatar(s.user.full_name, s.photo_path, 'sm') }}
           </td>
           <td class="mono">{{ s.staff_id_number }}</td>
           <td>{{ s.user.full_name }}</td>

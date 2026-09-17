@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "macros.html" as m %}
 {% block title %}{{ staff.user.full_name }}{% endblock %}
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-3">
@@ -6,9 +7,7 @@
     <a href="{{ url_for('staff.list_staff') }}" class="btn btn-sm btn-outline-secondary me-2">
       <i class="bi bi-arrow-left"></i>
     </a>
-    <span class="avatar-circle avatar-1 me-2" style="width:44px; height:44px; font-size:1rem;">
-      {{ staff.user.full_name.split()[0][0]|upper }}{{ staff.user.full_name.split()[-1][0]|upper if staff.user.full_name.split()|length > 1 else '' }}
-    </span>
+    <span class="me-2">{{ m.avatar(staff.user.full_name, staff.photo_path, 'sm') }}</span>
     <h4 class="mb-0 brand-font">{{ staff.user.full_name }}</h4>
     <span class="badge bg-secondary text-capitalize ms-2">{{ staff.user.role }}</span>
     {% if staff.is_active %}<span class="badge bg-success">Active</span>

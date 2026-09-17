@@ -80,6 +80,7 @@ class Staff(db.Model):
     designation = db.Column(db.String(80))  # "Mathematics Teacher", "Head Accountant"
     date_employed = db.Column(db.Date)
     is_active = db.Column(db.Boolean, default=True)
+    photo_path = db.Column(db.String(255))
 
     def __repr__(self):
         return f"<Staff {self.staff_id_number}>"

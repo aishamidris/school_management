@@ -58,6 +58,16 @@ class User(UserMixin, db.Model):
     def is_locked(self):
         return bool(self.locked_until and self.locked_until > datetime.utcnow())
 
+    @property
+    def profile_photo_path(self):
+        """Wherever this user's uploaded photo lives, regardless of role
+        (Staff and Student each keep their own photo_path column)."""
+        if self.staff_profile and self.staff_profile.photo_path:
+            return self.staff_profile.photo_path
+        if self.student_profile and self.student_profile.photo_path:
+            return self.student_profile.photo_path
+        return None
+
     def __repr__(self):
         return f"<User {self.full_name} ({self.role})>"
 
