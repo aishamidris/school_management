@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Classes & Arms{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="brand-font mb-1">Classes &amp; Arms</h4>
+    <p class="text-muted mb-0 small">
+      {% if session %}Current session: {{ session.name }}{% else %}No current session set{% endif %}
+      &middot; add, rename, or remove classes and arms as your school's structure changes — some classes may need just one arm, others several.
+    </p>
+  </div>
+  <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addClassModal">
+    <i class="bi bi-plus-lg"></i> Add Class
+  </button>
+</div>
+
+{% if not classes %}
+<div class="alert alert-info">No classes have been set up yet. Click "Add Class" to create your first one.</div>
+{% endif %}
+
+{% for group in groups %}
+{% if group == 'Ungrouped' %}
+{% set group_classes = classes|rejectattr('level_group')|list %}
+{% else %}
+{% set group_classes = classes|selectattr('level_group', 'equalto', group)|list %}
+{% endif %}
+{% if group_classes %}
+<div class="card mb-3">
+  <div class="card-header bg-white"><strong>{{ group }}</strong></div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Class</th><th>Arms this session</th><th>Students</th><th class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for sc in group_classes %}
+        <tr>
+          <td>{{ sc.name }}</td>
+          <td>{{ arm_counts.get(sc.id, 0) }}</td>
+          <td>{{ student_counts.get(sc.id, 0) }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('academics.view_class', class_id=sc.id) }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-diagram-3"></i> Manage Arms
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editClassModal{{ sc.id }}">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteClassModal{{ sc.id }}">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+
+        <div class="modal fade" id="editClassModal{{ sc.id }}" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="POST" action="{{ url_for('academics.edit_class', class_id=sc.id) }}">
+                <div class="modal-header"><h6 class="modal-title">Edit {{ sc.name }}</h6>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label small text-muted">Class Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ sc.name }}" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small text-muted">Level Group</label>
+                    <select name="level_group" class="form-select">
+                      <option value="">— None —</option>
+                      {% for g in level_group_options %}
+                      <option value="{{ g }}" {% if sc.level_group == g %}selected{% endif %}>{{ g }}</option>
+                      {% endfor %}
+                      <option value="__custom__" {% if sc.level_group and sc.level_group not in level_group_options %}selected{% endif %}>Custom…</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small text-muted">Custom group name (if "Custom…" selected above)</label>
+                    <input type="text" name="level_group_custom" class="form-control" value="{% if sc.level_group and sc.level_group not in level_group_options %}{{ sc.level_group }}{% endif %}">
+                  </div>
+                  <div class="mb-1">
+                    <label class="form-label small text-muted">Sort Order</label>
+                    <input type="number" name="order" class="form-control" value="{{ sc.order }}">
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="deleteClassModal{{ sc.id }}" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header"><h6 class="modal-title">Delete {{ sc.name }}?</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <p>This removes the class and its (empty) arms. If it has students or a fee structure attached, deletion will be blocked.</p>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('academics.delete_class', class_id=sc.id) }}">
+                  <button type="submit" class="btn btn-danger">Delete Class</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<div class="modal fade" id="addClassModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('academics.create_class') }}">
+        <div class="modal-header"><h6 class="modal-title">Add Class</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Class Name</label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. JSS 1, Reception, Year 7" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Level Group</label>
+            <select name="level_group" class="form-select" id="newClassGroupSelect">
+              <option value="">— None —</option>
+              {% for g in level_group_options %}
+              <option value="{{ g }}">{{ g }}</option>
+              {% endfor %}
+              <option value="__custom__">Custom…</option>
+            </select>
+            <div class="form-text">Grouping classes lets you set one fee structure for a whole level later (e.g. all Nursery classes).</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Custom group name (if "Custom…" selected above)</label>
+            <input type="text" name="level_group_custom" class="form-control">
+          </div>
+          <div class="mb-1">
+            <label class="form-label small text-muted">Arms</label>
+            <input type="text" name="arm_names" class="form-control" value="A" placeholder="e.g. A, B, C — or just A">
+            <div class="form-text">Comma-separated. Some classes just need one arm — others several.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Class</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

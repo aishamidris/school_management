@@ -64,27 +64,29 @@ def list_fee_structures():
 def create_fee_structure():
     classes = SchoolClass.query.order_by(SchoolClass.order).all()
     terms = _current_session_terms()
+    level_groups = sorted({c.level_group for c in classes if c.level_group})
 
     if request.method == "POST":
-        school_class_id = request.form.get("school_class_id", type=int)
+        target_mode = request.form.get("target_mode", "single")
         term_id = request.form.get("term_id", type=int)
         labels = request.form.getlist("item_label[]")
         amounts = request.form.getlist("item_amount[]")
 
-        if not school_class_id or not term_id:
-            flash("Please select a class and term.", "danger")
-            return render_template("finance/fee_structure_form.html", classes=classes, terms=terms)
+        if target_mode == "group":
+            level_group = request.form.get("level_group", "").strip()
+            target_classes = SchoolClass.query.filter_by(level_group=level_group).all() if level_group else []
+        elif target_mode == "multi":
+            class_ids = request.form.getlist("class_ids[]", type=int)
+            target_classes = SchoolClass.query.filter(SchoolClass.id.in_(class_ids)).all() if class_ids else []
+        else:
+            single_id = request.form.get("school_class_id", type=int)
+            target_classes = SchoolClass.query.filter_by(id=single_id).all() if single_id else []
 
-        existing = FeeStructure.query.filter_by(school_class_id=school_class_id, term_id=term_id).first()
-        if existing:
-            flash("A fee structure already exists for this class and term. Edit it instead.", "warning")
-            return redirect(url_for("finance.view_fee_structure", structure_id=existing.id))
+        if not target_classes or not term_id:
+            flash("Please select a term and at least one class (or a level group).", "danger")
+            return render_template("finance/fee_structure_form.html", classes=classes, terms=terms, level_groups=level_groups)
 
-        structure = FeeStructure(school_class_id=school_class_id, term_id=term_id)
-        db.session.add(structure)
-        db.session.flush()
-
-        item_count = 0
+        items = []
         for label, amount_raw in zip(labels, amounts):
             label = label.strip()
             if not label or not amount_raw:
@@ -93,27 +95,121 @@ def create_fee_structure():
                 amount = Decimal(amount_raw)
             except InvalidOperation:
                 continue
-            db.session.add(FeeItem(fee_structure_id=structure.id, label=label, amount=amount))
-            item_count += 1
+            items.append((label, amount))
 
-        if item_count == 0:
-            db.session.rollback()
+        if not items:
             flash("Add at least one fee item with a label and amount.", "danger")
-            return render_template("finance/fee_structure_form.html", classes=classes, terms=terms)
+            return render_template("finance/fee_structure_form.html", classes=classes, terms=terms, level_groups=level_groups)
+
+        created_ids, skipped_names = [], []
+        for sc in target_classes:
+            existing = FeeStructure.query.filter_by(school_class_id=sc.id, term_id=term_id).first()
+            if existing:
+                skipped_names.append(sc.name)
+                continue
+
+            structure = FeeStructure(school_class_id=sc.id, term_id=term_id)
+            db.session.add(structure)
+            db.session.flush()
+            for label, amount in items:
+                db.session.add(FeeItem(fee_structure_id=structure.id, label=label, amount=amount))
+            created_ids.append(structure.id)
 
         log_action(
             action="fee_structure.created",
             entity_type="FeeStructure",
-            entity_id=structure.id,
-            after={"school_class_id": school_class_id, "term_id": term_id, "item_count": item_count},
-            description=f"{current_user.full_name} created a fee structure with {item_count} item(s)",
+            after={"term_id": term_id, "created": len(created_ids), "skipped": skipped_names},
+            description=f"{current_user.full_name} created {len(created_ids)} fee structure(s) "
+                        f"with {len(items)} item(s) each" + (f"; skipped {len(skipped_names)} (already existed)" if skipped_names else ""),
         )
         db.session.commit()
 
-        flash("Fee structure created.", "success")
-        return redirect(url_for("finance.view_fee_structure", structure_id=structure.id))
+        if skipped_names:
+            flash(f"Skipped {len(skipped_names)} class(es) that already had a fee structure this term: {', '.join(skipped_names)}.", "warning")
 
-    return render_template("finance/fee_structure_form.html", classes=classes, terms=terms)
+        if not created_ids:
+            flash("No fee structures were created — every selected class already had one for this term.", "warning")
+            return redirect(url_for("finance.list_fee_structures"))
+
+        flash(f"Created {len(created_ids)} fee structure(s).", "success")
+        if len(created_ids) == 1:
+            return redirect(url_for("finance.view_fee_structure", structure_id=created_ids[0]))
+        return redirect(url_for("finance.view_fee_structure_group", ids=",".join(str(i) for i in created_ids)))
+
+    return render_template("finance/fee_structure_form.html", classes=classes, terms=terms, level_groups=level_groups)
+
+
+@finance_bp.route("/finance/fee-structures/group")
+@login_required
+@roles_required(*FINANCE_ROLES)
+@permission_required('fees.view')
+def view_fee_structure_group():
+    ids_raw = request.args.get("ids", "")
+    try:
+        ids = [int(i) for i in ids_raw.split(",") if i.strip()]
+    except ValueError:
+        ids = []
+
+    structures = FeeStructure.query.filter(FeeStructure.id.in_(ids)).all() if ids else []
+
+    rows = []
+    for structure in structures:
+        student_count = (
+            Student.query.join(ClassArm)
+            .filter(ClassArm.school_class_id == structure.school_class_id, Student.status == StudentStatus.ACTIVE)
+            .count()
+        )
+        existing_invoice_count = (
+            Invoice.query.join(Student).join(ClassArm)
+            .filter(ClassArm.school_class_id == structure.school_class_id, Invoice.term_id == structure.term_id)
+            .count()
+        )
+        rows.append({"structure": structure, "student_count": student_count, "existing_invoice_count": existing_invoice_count})
+
+    return render_template("finance/fee_structure_group_view.html", rows=rows)
+
+
+@finance_bp.route("/finance/fee-structures/group/generate-invoices", methods=["POST"])
+@login_required
+@roles_required(*FINANCE_ROLES)
+@permission_required('fees.manage')
+def generate_invoices_group():
+    ids_raw = request.form.get("ids", "")
+    try:
+        ids = [int(i) for i in ids_raw.split(",") if i.strip()]
+    except ValueError:
+        ids = []
+
+    structures = FeeStructure.query.filter(FeeStructure.id.in_(ids)).all() if ids else []
+
+    total_created, total_skipped = 0, 0
+    for structure in structures:
+        students = (
+            Student.query.join(ClassArm)
+            .filter(ClassArm.school_class_id == structure.school_class_id, Student.status == StudentStatus.ACTIVE)
+            .all()
+        )
+        for student in students:
+            existing = Invoice.query.filter_by(student_id=student.id, term_id=structure.term_id).first()
+            if existing:
+                total_skipped += 1
+                continue
+            db.session.add(Invoice(
+                student_id=student.id, term_id=structure.term_id,
+                expected_amount=structure.total, status=PaymentStatus.OUTSTANDING,
+            ))
+            total_created += 1
+
+    log_action(
+        action="invoice.batch_generated",
+        entity_type="FeeStructure",
+        after={"structure_ids": ids, "created": total_created, "skipped": total_skipped},
+        description=f"{current_user.full_name} generated {total_created} invoice(s) across {len(structures)} class(es); {total_skipped} already existed",
+    )
+    db.session.commit()
+
+    flash(f"Generated {total_created} invoice(s) across {len(structures)} class(es). {total_skipped} already existed.", "success")
+    return redirect(url_for("finance.view_fee_structure_group", ids=ids_raw))
 
 
 @finance_bp.route("/finance/fee-structures/<int:structure_id>")

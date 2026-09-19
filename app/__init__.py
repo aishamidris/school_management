@@ -46,6 +46,7 @@ def create_app(config_class=Config):
     from app.blueprints.attendance.routes import attendance_bp
     from app.blueprints.audit.routes import audit_bp
     from app.blueprints.profile.routes import profile_bp
+    from app.blueprints.academics.routes import academics_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -59,6 +60,7 @@ def create_app(config_class=Config):
     app.register_blueprint(attendance_bp)
     app.register_blueprint(audit_bp)
     app.register_blueprint(profile_bp)
+    app.register_blueprint(academics_bp)
 
     # Make has_perm('key') available in every template, checking the
     # currently logged-in user against the granular permission system.

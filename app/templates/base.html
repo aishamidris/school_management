@@ -71,6 +71,11 @@
           <i class="bi bi-person-badge"></i> Staff
         </a>
         {% endif %}
+        {% if current_user.role in ['owner', 'admin'] and has_perm('academics.manage') %}
+        <a href="{{ url_for('academics.list_classes') }}" class="{% if request.blueprint == 'academics' %}active{% endif %}">
+          <i class="bi bi-diagram-3-fill"></i> Classes &amp; Arms
+        </a>
+        {% endif %}
         {% if current_user.role in ['owner', 'admin'] and has_perm('reconciliation.view') %}
         <a href="{{ url_for('reconciliation.dashboard') }}" class="{% if request.blueprint == 'reconciliation' %}active{% endif %}">
           <i class="bi bi-shield-check"></i> Reconciliation

@@ -10,16 +10,57 @@
 
 <form method="POST" class="card">
   <div class="card-body">
+    <div class="mb-4">
+      <label class="form-label d-block">Apply To *</label>
+      <div class="btn-group" role="group">
+        <input type="radio" class="btn-check" name="target_mode" id="mode_single" value="single" checked>
+        <label class="btn btn-outline-primary btn-sm" for="mode_single">One Class</label>
+
+        <input type="radio" class="btn-check" name="target_mode" id="mode_group" value="group" {% if not level_groups %}disabled{% endif %}>
+        <label class="btn btn-outline-primary btn-sm" for="mode_group">A Whole Level Group</label>
+
+        <input type="radio" class="btn-check" name="target_mode" id="mode_multi" value="multi">
+        <label class="btn btn-outline-primary btn-sm" for="mode_multi">Choose Specific Classes</label>
+      </div>
+      {% if not level_groups %}
+      <div class="form-text">No classes have a level group set yet — set one from Classes &amp; Arms to unlock this option.</div>
+      {% endif %}
+    </div>
+
     <div class="row g-3 mb-4">
-      <div class="col-md-6">
+      <div class="col-md-6" id="single-class-field">
         <label class="form-label">Class *</label>
-        <select name="school_class_id" class="form-select" required>
+        <select name="school_class_id" class="form-select">
           <option value="">Select class</option>
           {% for c in classes %}
-          <option value="{{ c.id }}">{{ c.name }}</option>
+          <option value="{{ c.id }}">{{ c.name }}{% if c.level_group %} — {{ c.level_group }}{% endif %}</option>
           {% endfor %}
         </select>
       </div>
+
+      <div class="col-md-6 d-none" id="group-field">
+        <label class="form-label">Level Group *</label>
+        <select name="level_group" class="form-select">
+          <option value="">Select level group</option>
+          {% for g in level_groups %}
+          <option value="{{ g }}">{{ g }} ({{ classes|selectattr('level_group', 'equalto', g)|list|length }} classes)</option>
+          {% endfor %}
+        </select>
+        <div class="form-text">One fee structure will be created for every class in this group.</div>
+      </div>
+
+      <div class="col-12 d-none" id="multi-field">
+        <label class="form-label">Classes *</label>
+        <div class="row row-cols-2 row-cols-md-4 g-2 border rounded p-2">
+          {% for c in classes %}
+          <div class="form-check col">
+            <input class="form-check-input" type="checkbox" name="class_ids[]" value="{{ c.id }}" id="cls_{{ c.id }}">
+            <label class="form-check-label small" for="cls_{{ c.id }}">{{ c.name }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
       <div class="col-md-6">
         <label class="form-label">Term *</label>
         <select name="term_id" class="form-select" required>
@@ -54,6 +95,14 @@
 </form>
 
 <script>
+document.querySelectorAll('input[name="target_mode"]').forEach(radio => {
+  radio.addEventListener('change', function () {
+    document.getElementById('single-class-field').classList.toggle('d-none', this.value !== 'single');
+    document.getElementById('group-field').classList.toggle('d-none', this.value !== 'group');
+    document.getElementById('multi-field').classList.toggle('d-none', this.value !== 'multi');
+  });
+});
+
 document.getElementById('add-row').addEventListener('click', function () {
   const container = document.getElementById('fee-items');
   const row = container.querySelector('.fee-item-row').cloneNode(true);

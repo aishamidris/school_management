@@ -25,7 +25,7 @@
       <tbody>
         {% for s in structures %}
         <tr>
-          <td>{{ s.school_class.name }}</td>
+          <td>{{ s.school_class.name }}{% if s.school_class.level_group %} <span class="text-muted small">— {{ s.school_class.level_group }}</span>{% endif %}</td>
           <td>{{ s.term.name }} ({{ s.term.session.name }})</td>
           <td>{{ s.items|length }}</td>
           <td class="text-end fw-bold">₦{{ "{:,.0f}".format(s.total) }}</td>

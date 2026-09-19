@@ -34,9 +34,12 @@ class SchoolClass(db.Model):
     """e.g. JSS 1, JSS 2, SS 3 — the grade level."""
     __tablename__ = "school_classes"
 
+    LEVEL_GROUPS = ["Nursery", "Primary", "Junior Secondary", "Senior Secondary"]
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(30), unique=True, nullable=False)  # "JSS 2"
     order = db.Column(db.Integer, default=0)  # for sorting / promotion sequence
+    level_group = db.Column(db.String(30))  # "Nursery" / "Primary" / "Junior Secondary" / "Senior Secondary" / custom — lets fee structures target a whole level at once
 
     arms = db.relationship("ClassArm", backref="school_class", cascade="all, delete-orphan")
 

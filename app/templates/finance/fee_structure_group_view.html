@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Fee Structures{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('finance.list_fee_structures') }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h4 class="mb-0">{{ rows|length }} Fee Structure(s) Created</h4>
+  </div>
+  {% if rows %}
+  <form method="POST" action="{{ url_for('finance.generate_invoices_group') }}"
+        onsubmit="return confirm('Generate invoices for every class listed below? This skips students who already have one this term.');">
+    <input type="hidden" name="ids" value="{{ rows|map(attribute='structure.id')|join(',') }}">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="bi bi-receipt-cutoff"></i> Generate Invoices for All
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+{% if not rows %}
+<div class="alert alert-warning">No fee structures matched — they may have already been generated or removed.</div>
+{% else %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Class</th><th>Term</th><th class="text-end">Total</th><th>Active Students</th><th>Existing Invoices</th><th class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% set s = row.structure %}
+        <tr>
+          <td>{{ s.school_class.name }}{% if s.school_class.level_group %} <span class="text-muted small">— {{ s.school_class.level_group }}</span>{% endif %}</td>
+          <td>{{ s.term.name }}</td>
+          <td class="text-end mono">₦{{ "{:,.0f}".format(s.total) }}</td>
+          <td>{{ row.student_count }}</td>
+          <td>{{ row.existing_invoice_count }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('finance.view_fee_structure', structure_id=s.id) }}" class="btn btn-sm btn-outline-secondary">View / Generate</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
