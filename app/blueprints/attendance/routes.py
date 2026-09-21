@@ -7,9 +7,11 @@ from app.models.user import Role
 from app.models.academic import AcademicSession, ClassArm
 from app.models.people import Student, StudentStatus, Staff
 from app.models.attendance import StudentAttendance, StaffAttendance, AttendanceStatus
+from app.models.settings import SchoolSettings
 from app.utils.decorators import roles_required, permission_required
 from app.utils.permissions import has_permission
 from app.utils.audit import log_action
+from app.utils.geo import haversine_distance_m
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../../templates/attendance")
 
@@ -32,6 +34,40 @@ def _parse_date(raw):
         except ValueError:
             pass
     return date_cls.today()
+
+
+def _evaluate_location(settings, lat, lng, accuracy):
+    """Returns (distance_m, verified) for a submitted lat/lng against the
+    configured school location. verified is None when there's nothing to
+    judge yet (no school location configured, or browser gave nothing).
+
+    The device's own reported GPS accuracy is added to the allowed radius
+    (capped at 100 m) so a normal, slightly-imprecise reading near the
+    boundary isn't wrongly flagged as off-site."""
+    if not settings.is_configured:
+        return None, None
+    if lat is None or lng is None:
+        return None, False
+
+    distance = haversine_distance_m(settings.latitude, settings.longitude, lat, lng)
+    tolerance = settings.checkin_radius_m + min(accuracy or 0, 100)
+    verified = distance <= tolerance
+    return round(distance), verified
+
+
+def _read_location_form():
+    """Pulls optional lat/lng/accuracy out of a check-in/out POST. Any of
+    them can be missing (JS geolocation may have failed or been denied)."""
+    try:
+        lat = float(request.form.get("latitude"))
+        lng = float(request.form.get("longitude"))
+    except (TypeError, ValueError):
+        return None, None, None
+    try:
+        accuracy = float(request.form.get("accuracy"))
+    except (TypeError, ValueError):
+        accuracy = None
+    return lat, lng, accuracy
 
 
 # ---------------- Student attendance ----------------
@@ -153,7 +189,7 @@ def my_attendance():
         .all()
     )
 
-    return render_template("attendance/my_attendance.html", today_record=today_record, history=history, today=today)
+    return render_template("attendance/my_attendance.html", today_record=today_record, history=history, today=today, settings=SchoolSettings.get())
 
 
 @attendance_bp.route("/attendance/check-in", methods=["POST"])
@@ -171,18 +207,42 @@ def check_in():
         flash("You've already checked in today.", "warning")
         return redirect(url_for("attendance.my_attendance"))
 
+    settings = SchoolSettings.get()
+    lat, lng, accuracy = _read_location_form()
+    distance, verified = _evaluate_location(settings, lat, lng, accuracy)
+
+    if settings.enforce_checkin_location and settings.is_configured and verified is not True:
+        if lat is None:
+            flash("We couldn't get your location. Please allow location access in your browser and try again.", "danger")
+        else:
+            flash(f"You appear to be about {distance:,} m from school, which is outside the allowed range. Check-in was not recorded.", "danger")
+        return redirect(url_for("attendance.my_attendance"))
+
     if not record:
         record = StaffAttendance(staff_id=staff.id, date=today, status=AttendanceStatus.PRESENT)
         db.session.add(record)
 
     record.check_in = datetime.utcnow()
     record.status = AttendanceStatus.PRESENT
+    record.check_in_lat = lat
+    record.check_in_lng = lng
+    record.check_in_accuracy_m = accuracy
+    record.check_in_distance_m = distance
+    record.check_in_verified = verified
+
+    location_note = ""
+    if verified is True:
+        location_note = f" (on-site, ~{distance:,} m from school)"
+    elif verified is False and distance is not None:
+        location_note = f" (off-site, ~{distance:,} m from school)"
+    elif verified is False:
+        location_note = " (no location provided)"
 
     log_action(
         action="attendance.staff_checkin",
         entity_type="StaffAttendance",
         entity_id=staff.id,
-        description=f"{current_user.full_name} checked in at {record.check_in.strftime('%H:%M')}",
+        description=f"{current_user.full_name} checked in at {record.check_in.strftime('%H:%M')}{location_note}",
     )
     db.session.commit()
 
@@ -208,7 +268,23 @@ def check_out():
         flash("You've already checked out today.", "warning")
         return redirect(url_for("attendance.my_attendance"))
 
+    settings = SchoolSettings.get()
+    lat, lng, accuracy = _read_location_form()
+    distance, verified = _evaluate_location(settings, lat, lng, accuracy)
+
+    if settings.enforce_checkin_location and settings.is_configured and verified is not True:
+        if lat is None:
+            flash("We couldn't get your location. Please allow location access in your browser and try again.", "danger")
+        else:
+            flash(f"You appear to be about {distance:,} m from school, which is outside the allowed range. Check-out was not recorded.", "danger")
+        return redirect(url_for("attendance.my_attendance"))
+
     record.check_out = datetime.utcnow()
+    record.check_out_lat = lat
+    record.check_out_lng = lng
+    record.check_out_accuracy_m = accuracy
+    record.check_out_distance_m = distance
+    record.check_out_verified = verified
 
     log_action(
         action="attendance.staff_checkout",
@@ -247,3 +323,45 @@ def staff_overview():
         present_count=present_count,
         total_staff=len(all_staff),
     )
+
+
+# ---------------- Admin: check-in location settings ----------------
+
+@attendance_bp.route("/attendance/settings/location", methods=["GET", "POST"])
+@login_required
+@roles_required(*ADMIN_ROLES)
+@permission_required("attendance.settings")
+def location_settings():
+    settings = SchoolSettings.get()
+
+    if request.method == "POST":
+        try:
+            lat = float(request.form.get("latitude"))
+            lng = float(request.form.get("longitude"))
+        except (TypeError, ValueError):
+            flash("Please provide valid latitude and longitude values.", "danger")
+            return redirect(url_for("attendance.location_settings"))
+
+        try:
+            radius = int(request.form.get("checkin_radius_m", 150))
+        except (TypeError, ValueError):
+            radius = 150
+        radius = max(20, min(radius, 2000))
+
+        settings.latitude = lat
+        settings.longitude = lng
+        settings.checkin_radius_m = radius
+        settings.enforce_checkin_location = bool(request.form.get("enforce_checkin_location"))
+
+        log_action(
+            action="attendance.location_settings_updated",
+            entity_type="SchoolSettings",
+            entity_id=settings.id,
+            description=f"{current_user.full_name} updated the school check-in location (radius {radius} m, enforced={settings.enforce_checkin_location})",
+        )
+        db.session.commit()
+
+        flash("Check-in location settings saved.", "success")
+        return redirect(url_for("attendance.location_settings"))
+
+    return render_template("attendance/location_settings.html", settings=settings)

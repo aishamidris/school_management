@@ -43,7 +43,6 @@ PERMISSIONS = {
     "attendance.staff.view": ("View staff attendance records", "Attendance"),
     "attendance.staff.mark": ("Mark daily staff attendance", "Attendance"),
     "attendance.settings": ("Configure school location & check-in geofencing", "Attendance"),
-    "lessonplans.view_all": ("View every teacher's lesson plans", "Lesson Plans"),
     "audit.view": ("View the full audit log", "Oversight"),
     "academics.manage": ("Add, edit, or remove classes and arms", "Academics"),
 }
@@ -65,7 +64,6 @@ DEFAULT_PERMISSIONS = {
         "attendance.staff.view", "attendance.staff.mark", "attendance.settings",
         "audit.view",
         "academics.manage",
-        "lessonplans.view_all",
     },
     Role.ACCOUNTANT: {
         "students.view",

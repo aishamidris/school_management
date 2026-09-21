@@ -3,9 +3,16 @@
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <h4 class="mb-0 brand-font"><i class="bi bi-people-fill"></i> Staff Attendance</h4>
-  <form method="GET" class="d-flex align-items-center gap-2">
-    <input type="date" name="date" value="{{ selected_date.isoformat() }}" class="form-control form-control-sm" style="width:160px;" onchange="this.form.submit()">
-  </form>
+  <div class="d-flex align-items-center gap-2">
+    {% if has_perm('attendance.settings') %}
+    <a href="{{ url_for('attendance.location_settings') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-geo-alt"></i> Location Settings
+    </a>
+    {% endif %}
+    <form method="GET" class="d-flex align-items-center gap-2">
+      <input type="date" name="date" value="{{ selected_date.isoformat() }}" class="form-control form-control-sm" style="width:160px;" onchange="this.form.submit()">
+    </form>
+  </div>
 </div>
 
 <div class="alert alert-secondary py-2 small mb-3">
@@ -17,7 +24,7 @@
   <div class="table-responsive">
     <table class="table align-middle mb-0">
       <thead class="table-light">
-        <tr><th>Staff</th><th>Role</th><th>Status</th><th>Check In</th><th>Check Out</th></tr>
+        <tr><th>Staff</th><th>Role</th><th>Status</th><th>Check In</th><th>Location</th><th>Check Out</th></tr>
       </thead>
       <tbody>
         {% for row in rows %}
@@ -38,10 +45,25 @@
             {% endif %}
           </td>
           <td class="small">{{ row.record.check_in.strftime('%H:%M') if row.record and row.record.check_in else '—' }}</td>
+          <td class="small">
+            {% if row.record and row.record.check_in_verified is not none %}
+              {% if row.record.check_in_verified %}
+              <span class="badge bg-success-subtle text-success-emphasis" title="~{{ row.record.check_in_distance_m }} m from school"><i class="bi bi-geo-alt-fill"></i> On-site</span>
+              {% else %}
+              <span class="badge bg-warning-subtle text-warning-emphasis" title="{% if row.record.check_in_distance_m %}~{{ row.record.check_in_distance_m }} m from school{% else %}No location provided{% endif %}">
+                <i class="bi bi-exclamation-triangle"></i> {% if row.record.check_in_distance_m %}Off-site ({{ row.record.check_in_distance_m }} m){% else %}No location{% endif %}
+              </span>
+              {% endif %}
+            {% elif row.record and row.record.check_in %}
+              <span class="text-muted">—</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td class="small">{{ row.record.check_out.strftime('%H:%M') if row.record and row.record.check_out else '—' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="text-center text-muted py-4">No active staff records.</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-4">No active staff records.</td></tr>
         {% endfor %}
       </tbody>
     </table>

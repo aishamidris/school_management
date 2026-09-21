@@ -37,6 +37,23 @@ class StaffAttendance(db.Model):
     check_in = db.Column(db.DateTime)
     check_out = db.Column(db.DateTime)
 
+    # Location captured from the staff member's browser at the moment of
+    # check-in/out, used to verify they were actually on campus. verified
+    # is None when there's nothing to judge (no school location configured
+    # yet, or the browser didn't provide coordinates), True when within
+    # the configured radius, False when outside it.
+    check_in_lat = db.Column(db.Float)
+    check_in_lng = db.Column(db.Float)
+    check_in_accuracy_m = db.Column(db.Float)
+    check_in_distance_m = db.Column(db.Float)
+    check_in_verified = db.Column(db.Boolean)
+
+    check_out_lat = db.Column(db.Float)
+    check_out_lng = db.Column(db.Float)
+    check_out_accuracy_m = db.Column(db.Float)
+    check_out_distance_m = db.Column(db.Float)
+    check_out_verified = db.Column(db.Boolean)
+
     staff = db.relationship("Staff")
 
     __table_args__ = (

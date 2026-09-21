@@ -9,15 +9,31 @@
     <div class="card">
       <div class="card-body text-center py-4">
         {% if not today_record or not today_record.check_in %}
-          <p class="text-muted mb-3">You haven't checked in today.</p>
-          <form method="POST" action="{{ url_for('attendance.check_in') }}">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-box-arrow-in-right"></i> Check In</button>
+          <p class="text-muted mb-2">You haven't checked in today.</p>
+          {% if settings.is_configured %}
+          <p class="text-muted small mb-3"><i class="bi bi-geo-alt"></i> We'll check your location when you check in{% if settings.enforce_checkin_location %} — you'll need to be at school{% endif %}.</p>
+          {% endif %}
+          <form method="POST" action="{{ url_for('attendance.check_in') }}" id="checkinForm">
+            <input type="hidden" name="latitude" id="checkinLat">
+            <input type="hidden" name="longitude" id="checkinLng">
+            <input type="hidden" name="accuracy" id="checkinAccuracy">
+            <button type="submit" class="btn btn-primary" id="checkinBtn"><i class="bi bi-box-arrow-in-right"></i> Check In</button>
           </form>
         {% elif not today_record.check_out %}
           <p class="mb-1">Checked in at <strong>{{ today_record.check_in.strftime('%H:%M') }}</strong></p>
+          {% if today_record.check_in_verified is not none %}
+            {% if today_record.check_in_verified %}
+            <span class="badge bg-success-subtle text-success-emphasis mb-2"><i class="bi bi-geo-alt-fill"></i> On-site</span>
+            {% else %}
+            <span class="badge bg-warning-subtle text-warning-emphasis mb-2"><i class="bi bi-exclamation-triangle"></i> {% if today_record.check_in_distance_m %}Off-site (~{{ today_record.check_in_distance_m }} m){% else %}Location not shared{% endif %}</span>
+            {% endif %}
+          {% endif %}
           <p class="text-muted small mb-3">Don't forget to check out before you leave.</p>
-          <form method="POST" action="{{ url_for('attendance.check_out') }}">
-            <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-box-arrow-right"></i> Check Out</button>
+          <form method="POST" action="{{ url_for('attendance.check_out') }}" id="checkoutForm">
+            <input type="hidden" name="latitude" id="checkoutLat">
+            <input type="hidden" name="longitude" id="checkoutLng">
+            <input type="hidden" name="accuracy" id="checkoutAccuracy">
+            <button type="submit" class="btn btn-outline-secondary" id="checkoutBtn"><i class="bi bi-box-arrow-right"></i> Check Out</button>
           </form>
         {% else %}
           <p class="mb-1">Checked in at <strong>{{ today_record.check_in.strftime('%H:%M') }}</strong></p>
@@ -33,7 +49,7 @@
       <div class="card-header bg-white"><strong>Last 30 Days</strong></div>
       <div class="table-responsive">
         <table class="table table-sm mb-0">
-          <thead class="table-light"><tr><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th></tr></thead>
+          <thead class="table-light"><tr><th>Date</th><th>Status</th><th>Check In</th><th>Location</th><th>Check Out</th></tr></thead>
           <tbody>
             {% for r in history %}
             <tr>
@@ -48,10 +64,21 @@
                 </span>
               </td>
               <td class="small">{{ r.check_in.strftime('%H:%M') if r.check_in else '—' }}</td>
+              <td class="small">
+                {% if r.check_in_verified is not none %}
+                  {% if r.check_in_verified %}
+                  <span class="text-success"><i class="bi bi-geo-alt-fill"></i> On-site</span>
+                  {% else %}
+                  <span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i> Off-site</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
               <td class="small">{{ r.check_out.strftime('%H:%M') if r.check_out else '—' }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="4" class="text-center text-muted py-3">No attendance history yet.</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-3">No attendance history yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -59,4 +86,47 @@
     </div>
   </div>
 </div>
+
+{% if settings.is_configured %}
+<script>
+(function () {
+  function wireLocationForm(formId, latId, lngId, accId, btnId) {
+    var form = document.getElementById(formId);
+    if (!form) return;
+    var btn = document.getElementById(btnId);
+
+    form.addEventListener("submit", function (e) {
+      // Already have coordinates (this is the JS-triggered resubmit) — let it through.
+      if (document.getElementById(latId).value) return;
+      if (!("geolocation" in navigator)) return; // no geolocation support — submit as-is, server flags it
+
+      e.preventDefault();
+      var originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Getting your location…';
+
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          document.getElementById(latId).value = pos.coords.latitude;
+          document.getElementById(lngId).value = pos.coords.longitude;
+          document.getElementById(accId).value = pos.coords.accuracy;
+          form.submit();
+        },
+        function () {
+          // Permission denied or unavailable — submit without coordinates;
+          // the server decides whether that's allowed.
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          form.submit();
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    });
+  }
+
+  wireLocationForm("checkinForm", "checkinLat", "checkinLng", "checkinAccuracy", "checkinBtn");
+  wireLocationForm("checkoutForm", "checkoutLat", "checkoutLng", "checkoutAccuracy", "checkoutBtn");
+})();
+</script>
+{% endif %}
 {% endblock %}

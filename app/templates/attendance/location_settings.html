@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Check-in Location Settings{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('attendance.staff_overview') }}" class="btn btn-sm btn-outline-secondary me-2">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0 brand-font"><i class="bi bi-geo-alt"></i> Check-in Location Settings</h4>
+</div>
+
+<p class="text-muted mb-4" style="max-width: 640px;">
+  Pin your campus location so the system can tell whether a staff member was actually
+  on-site when they checked in. The easiest way is to open this page on your phone while
+  standing at the school gate and tap "Use My Current Location."
+</p>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST">
+          <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="useMyLocationBtn">
+            <i class="bi bi-crosshair"></i> Use My Current Location
+          </button>
+          <div id="locateStatus" class="small text-muted mb-3"></div>
+
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label class="form-label small text-muted">Latitude</label>
+              <input type="text" name="latitude" id="latInput" class="form-control" value="{{ settings.latitude if settings.latitude is not none else '' }}" placeholder="e.g. 9.0579" required>
+            </div>
+            <div class="col-6 mb-3">
+              <label class="form-label small text-muted">Longitude</label>
+              <input type="text" name="longitude" id="lngInput" class="form-control" value="{{ settings.longitude if settings.longitude is not none else '' }}" placeholder="e.g. 7.4951" required>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-muted">Allowed radius (meters)</label>
+            <input type="number" name="checkin_radius_m" class="form-control" style="max-width:160px;" min="20" max="2000" value="{{ settings.checkin_radius_m }}">
+            <div class="form-text">How far from the pin a check-in still counts as "on-site." 100–200 m suits most single-compound schools.</div>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="enforce_checkin_location" id="enforceCheck" {% if settings.enforce_checkin_location %}checked{% endif %}>
+            <label class="form-check-label" for="enforceCheck">
+              Block check-in/out from outside this radius
+            </label>
+            <div class="form-text">
+              If unchecked, off-site check-ins are still recorded but flagged for you to review
+              (useful while you're first setting this up, or for staff who occasionally work off-site).
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm">Save Location Settings</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white"><strong>Current Setting</strong></div>
+      <div class="card-body">
+        {% if settings.is_configured %}
+        <p class="mb-1"><strong>Coordinates:</strong> {{ "%.5f"|format(settings.latitude) }}, {{ "%.5f"|format(settings.longitude) }}</p>
+        <p class="mb-1"><strong>Radius:</strong> {{ settings.checkin_radius_m }} m</p>
+        <p class="mb-3">
+          <strong>Mode:</strong>
+          {% if settings.enforce_checkin_location %}
+          <span class="badge bg-danger-subtle text-danger-emphasis">Strict — off-site check-ins are blocked</span>
+          {% else %}
+          <span class="badge bg-warning-subtle text-warning-emphasis">Soft — off-site check-ins are flagged, not blocked</span>
+          {% endif %}
+        </p>
+        <a href="https://www.google.com/maps?q={{ settings.latitude }},{{ settings.longitude }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-map"></i> View on Google Maps
+        </a>
+        {% else %}
+        <p class="text-muted mb-0">No location set yet — staff check-ins won't be location-checked until you save one.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById("useMyLocationBtn").addEventListener("click", function () {
+  var status = document.getElementById("locateStatus");
+  if (!("geolocation" in navigator)) {
+    status.textContent = "Your browser doesn't support location. Enter coordinates manually.";
+    return;
+  }
+  status.textContent = "Getting your location…";
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      document.getElementById("latInput").value = pos.coords.latitude.toFixed(6);
+      document.getElementById("lngInput").value = pos.coords.longitude.toFixed(6);
+      status.textContent = "Location captured (accuracy ~" + Math.round(pos.coords.accuracy) + " m). Review and save below.";
+    },
+    function () {
+      status.textContent = "Couldn't get your location — please allow location access, or enter coordinates manually.";
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+  );
+});
+</script>
+{% endblock %}
