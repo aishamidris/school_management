@@ -51,6 +51,11 @@
           <i class="bi bi-file-earmark-text-fill"></i> Exams
         </a>
         {% endif %}
+        {% if current_user.role in ['owner', 'admin', 'teacher'] %}
+        <a href="{{ url_for('lesson_plans.list_plans') }}" class="{% if request.blueprint == 'lesson_plans' %}active{% endif %}">
+          <i class="bi bi-journal-bookmark-fill"></i> Lesson Plans
+        </a>
+        {% endif %}
         {% if current_user.role in ['owner', 'admin', 'teacher'] and has_perm('attendance.student.view') %}
         <a href="{{ url_for('attendance.class_picker') }}" class="{% if request.blueprint == 'attendance' and request.endpoint != 'attendance.staff_overview' and request.endpoint != 'attendance.my_attendance' %}active{% endif %}">
           <i class="bi bi-calendar-check"></i> Attendance

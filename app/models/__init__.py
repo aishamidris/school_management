@@ -21,6 +21,8 @@ from app.models.exam import (
 )
 from app.models.tasks_comms import Task, TaskStatus, Announcement, AnnouncementAudience
 from app.models.permission import Permission
+from app.models.settings import SchoolSettings
+from app.models.lesson_plan import LessonPlan, LessonPlanDay, LessonPlanStep
 
 __all__ = [
     "User", "Role", "AuditLog",
@@ -31,4 +33,6 @@ __all__ = [
     "Exam", "Question", "QuestionOption", "Result", "GradeBand", "QuestionType", "AssessmentType",
     "Task", "TaskStatus", "Announcement", "AnnouncementAudience",
     "Permission",
+    "SchoolSettings",
+    "LessonPlan", "LessonPlanDay", "LessonPlanStep",
 ]

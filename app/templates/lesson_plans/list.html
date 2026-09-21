@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Lesson Plans{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 brand-font"><i class="bi bi-journal-bookmark-fill"></i> Lesson Plans</h4>
+  <div class="d-flex align-items-center gap-2">
+    {% if can_view_all %}
+    <div class="btn-group btn-group-sm">
+      <a href="{{ url_for('lesson_plans.list_plans') }}" class="btn btn-outline-secondary {% if not view_all %}active{% endif %}">Mine</a>
+      <a href="{{ url_for('lesson_plans.list_plans', view='all') }}" class="btn btn-outline-secondary {% if view_all %}active{% endif %}">All Staff</a>
+    </div>
+    {% endif %}
+    <a href="{{ url_for('lesson_plans.new_plan') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Lesson Plan</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Date</th>
+          <th>Class</th>
+          <th>Subject</th>
+          <th>Topic</th>
+          {% if view_all %}<th>Teacher</th>{% endif %}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plan in plans %}
+        <tr>
+          <td class="small">{{ plan.date.strftime('%d %b %Y') }}</td>
+          <td>{{ plan.class_subject.class_arm.display_name if plan.class_subject else '—' }}</td>
+          <td>{{ plan.class_subject.subject.name if plan.class_subject else '—' }}</td>
+          <td>{{ plan.topic }}{% if plan.sub_topic %} <span class="text-muted small">— {{ plan.sub_topic }}</span>{% endif %}</td>
+          {% if view_all %}<td class="small">{{ plan.teacher.user.full_name if plan.teacher else '—' }}</td>{% endif %}
+          <td class="text-end">
+            <a href="{{ url_for('lesson_plans.view_plan', plan_id=plan.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            <a href="{{ url_for('lesson_plans.edit_plan', plan_id=plan.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="{% if view_all %}6{% else %}5{% endif %}" class="text-center text-muted py-4">No lesson plans yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

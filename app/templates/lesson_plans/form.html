@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}{% if plan %}Edit Lesson Plan{% else %}New Lesson Plan{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('lesson_plans.list_plans') }}" class="btn btn-sm btn-outline-secondary me-2">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0 brand-font"><i class="bi bi-journal-bookmark-fill"></i> {% if plan %}Edit Lesson Plan{% else %}New Lesson Plan{% endif %}</h4>
+</div>
+
+{% if not class_subjects %}
+<div class="alert alert-warning">
+  You aren't assigned to teach any class/subject yet, so there's nothing to write a lesson plan for.
+  Ask an admin to assign you a subject first.
+</div>
+{% else %}
+
+<form method="POST" id="lessonPlanForm">
+  <div class="card mb-3">
+    <div class="card-header bg-white"><strong>Lesson Details</strong></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Class &amp; Subject</label>
+          <select name="class_subject_id" class="form-select" required>
+            <option value="">Select class &amp; subject</option>
+            {% for cs in class_subjects %}
+            <option value="{{ cs.id }}" {% if plan and plan.class_subject_id == cs.id %}selected{% endif %}>
+              {{ cs.class_arm.display_name }} — {{ cs.subject.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Date</label>
+          <input type="date" name="date" class="form-control" value="{{ (plan.date if plan else today).isoformat() }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Topic</label>
+          <input type="text" name="topic" class="form-control" value="{{ plan.topic if plan else '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Sub-topic</label>
+          <input type="text" name="sub_topic" class="form-control" value="{{ plan.sub_topic if plan else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Behavioral Objective</label>
+          <textarea name="behavioral_objective" class="form-control" rows="2">{{ plan.behavioral_objective if plan else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Teaching Methods</label>
+          <textarea name="teaching_methods" class="form-control" rows="2">{{ plan.teaching_methods if plan else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Teaching Aid</label>
+          <textarea name="teaching_aid" class="form-control" rows="2">{{ plan.teaching_aid if plan else '' }}</textarea>
+        </div>
+        <div class="col-md-6"></div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Introduction</label>
+          <textarea name="introduction" class="form-control" rows="3">{{ plan.introduction if plan else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Presentation</label>
+          <textarea name="presentation" class="form-control" rows="3">{{ plan.presentation if plan else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <strong>Content Development</strong>
+      <button type="button" class="btn btn-sm btn-primary" id="addDayBtn"><i class="bi bi-plus-lg"></i> Add Day</button>
+    </div>
+    <div class="card-body">
+      <div id="daysContainer">
+        {% if plan and plan.days %}
+          {% for day in plan.days %}
+          <div class="day-block card mb-3" data-day-uid="{{ day.id }}">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+              <strong>Day <span class="day-number">{{ loop.index }}</span></strong>
+              <button type="button" class="btn btn-sm btn-outline-danger remove-day"><i class="bi bi-trash"></i> Remove Day</button>
+            </div>
+            <div class="card-body">
+              <input type="hidden" name="day_uid[]" value="{{ day.id }}">
+              <div class="table-responsive">
+                <table class="table table-sm step-table mb-2">
+                  <thead class="table-light"><tr><th style="width:40%">Content Development</th><th style="width:30%">Teacher's Activity</th><th style="width:30%">Pupil's Activity</th><th></th></tr></thead>
+                  <tbody class="steps-body">
+                    {% for step in day.steps %}
+                    <tr>
+                      <td><textarea class="form-control form-control-sm" rows="2" name="steps_content_{{ day.id }}[]">{{ step.content_development or '' }}</textarea></td>
+                      <td><textarea class="form-control form-control-sm" rows="2" name="steps_teacher_{{ day.id }}[]">{{ step.teacher_activity or '' }}</textarea></td>
+                      <td><textarea class="form-control form-control-sm" rows="2" name="steps_pupil_{{ day.id }}[]">{{ step.pupil_activity or '' }}</textarea></td>
+                      <td class="align-middle"><button type="button" class="btn btn-sm btn-link text-danger remove-step" title="Remove step"><i class="bi bi-x-lg"></i></button></td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary add-step"><i class="bi bi-plus"></i> Add Step</button>
+            </div>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+      <p class="text-muted small mb-0" id="noDaysHint" {% if plan and plan.days %}style="display:none;"{% endif %}>
+        Click "Add Day" to start building the content development table (Day 1, Day 2, Day 3…).
+      </p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white"><strong>Wrap-up</strong></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Evaluation</label>
+          <textarea name="evaluation" class="form-control" rows="2">{{ plan.evaluation if plan else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Summary</label>
+          <textarea name="summary" class="form-control" rows="2">{{ plan.summary if plan else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Conclusion</label>
+          <textarea name="conclusion" class="form-control" rows="2">{{ plan.conclusion if plan else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Reference</label>
+          <textarea name="reference" class="form-control" rows="2">{{ plan.reference if plan else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Lesson Plan</button>
+  <a href="{{ url_for('lesson_plans.list_plans') }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+
+<script>
+(function () {
+  let dayCounter = 900000; // guaranteed higher than any real day id, so new blocks never collide with existing ones when editing
+
+  const container = document.getElementById("daysContainer");
+  const noDaysHint = document.getElementById("noDaysHint");
+
+  function stepRowHtml(uid) {
+    return `
+      <td><textarea class="form-control form-control-sm" rows="2" name="steps_content_${uid}[]"></textarea></td>
+      <td><textarea class="form-control form-control-sm" rows="2" name="steps_teacher_${uid}[]"></textarea></td>
+      <td><textarea class="form-control form-control-sm" rows="2" name="steps_pupil_${uid}[]"></textarea></td>
+      <td class="align-middle"><button type="button" class="btn btn-sm btn-link text-danger remove-step" title="Remove step"><i class="bi bi-x-lg"></i></button></td>
+    `;
+  }
+
+  function addStep(dayBlock) {
+    const uid = dayBlock.dataset.dayUid;
+    const tbody = dayBlock.querySelector(".steps-body");
+    const tr = document.createElement("tr");
+    tr.innerHTML = stepRowHtml(uid);
+    tbody.appendChild(tr);
+  }
+
+  function addDay() {
+    dayCounter++;
+    const uid = dayCounter;
+    const wrapper = document.createElement("div");
+    wrapper.className = "day-block card mb-3";
+    wrapper.dataset.dayUid = uid;
+    wrapper.innerHTML = `
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong>Day <span class="day-number"></span></strong>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-day"><i class="bi bi-trash"></i> Remove Day</button>
+      </div>
+      <div class="card-body">
+        <input type="hidden" name="day_uid[]" value="${uid}">
+        <div class="table-responsive">
+          <table class="table table-sm step-table mb-2">
+            <thead class="table-light"><tr><th style="width:40%">Content Development</th><th style="width:30%">Teacher's Activity</th><th style="width:30%">Pupil's Activity</th><th></th></tr></thead>
+            <tbody class="steps-body"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-primary add-step"><i class="bi bi-plus"></i> Add Step</button>
+      </div>
+    `;
+    container.appendChild(wrapper);
+    addStep(wrapper);
+    renumberDays();
+    noDaysHint.style.display = "none";
+  }
+
+  function renumberDays() {
+    document.querySelectorAll(".day-block").forEach((block, i) => {
+      block.querySelector(".day-number").textContent = i + 1;
+    });
+  }
+
+  document.getElementById("addDayBtn").addEventListener("click", addDay);
+
+  container.addEventListener("click", function (e) {
+    if (e.target.closest(".remove-day")) {
+      e.target.closest(".day-block").remove();
+      renumberDays();
+      if (!container.querySelector(".day-block")) noDaysHint.style.display = "block";
+    } else if (e.target.closest(".add-step")) {
+      addStep(e.target.closest(".day-block"));
+    } else if (e.target.closest(".remove-step")) {
+      const tbody = e.target.closest("tbody");
+      if (tbody.querySelectorAll("tr").length > 1) {
+        e.target.closest("tr").remove();
+      } else {
+        e.target.closest("tr").querySelectorAll("textarea").forEach(t => t.value = "");
+      }
+    }
+  });
+
+  renumberDays();
+
+  // A brand-new plan starts with one Day already in place, matching the paper form.
+  if (!container.querySelector(".day-block")) {
+    addDay();
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}
