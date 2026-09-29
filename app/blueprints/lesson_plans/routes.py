@@ -106,13 +106,28 @@ def _apply_form_to_plan(plan):
 @login_required
 @roles_required(*STAFF_ROLES)
 def list_plans():
-    view_all = request.args.get("view") == "all" and has_permission(current_user, "lessonplans.view_all")
+    can_view_all = has_permission(current_user, "lessonplans.view_all")
+    requested = request.args.get("view")
+
+    if requested == "mine":
+        view_all = False
+    elif requested == "all":
+        view_all = True
+    else:
+        # No explicit choice made: default to "all" only when there's no
+        # personal list to fall back to (Owner/Admin accounts aren't
+        # linked to a staff profile), so a permitted viewer never lands
+        # on a dead-end warning just from opening the page normally.
+        view_all = not current_user.staff_profile
+
+    view_all = view_all and can_view_all
+
+    if not view_all and not current_user.staff_profile:
+        flash("Your account isn't linked to a staff profile.", "warning")
+        return redirect(url_for("main.dashboard"))
 
     query = LessonPlan.query
     if not view_all:
-        if not current_user.staff_profile:
-            flash("Your account isn't linked to a staff profile.", "warning")
-            return redirect(url_for("main.dashboard"))
         query = query.filter_by(teacher_id=current_user.staff_profile.id)
 
     plans = query.order_by(LessonPlan.date.desc()).all()
@@ -121,7 +136,7 @@ def list_plans():
         "lesson_plans/list.html",
         plans=plans,
         view_all=view_all,
-        can_view_all=has_permission(current_user, "lessonplans.view_all"),
+        can_view_all=can_view_all,
     )
 
 

@@ -60,6 +60,7 @@ class ClassArm(db.Model):
     name = db.Column(db.String(10), nullable=False)  # "A", "B"
 
     class_teacher_id = db.Column(db.Integer, db.ForeignKey("staff.id"), nullable=True)
+    class_teacher = db.relationship("Staff")
 
     students = db.relationship("Student", backref="class_arm")
 

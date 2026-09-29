@@ -4,13 +4,15 @@
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <h4 class="mb-0 brand-font"><i class="bi bi-journal-bookmark-fill"></i> Lesson Plans</h4>
   <div class="d-flex align-items-center gap-2">
-    {% if can_view_all %}
+    {% if can_view_all and current_user.staff_profile %}
     <div class="btn-group btn-group-sm">
-      <a href="{{ url_for('lesson_plans.list_plans') }}" class="btn btn-outline-secondary {% if not view_all %}active{% endif %}">Mine</a>
+      <a href="{{ url_for('lesson_plans.list_plans', view='mine') }}" class="btn btn-outline-secondary {% if not view_all %}active{% endif %}">Mine</a>
       <a href="{{ url_for('lesson_plans.list_plans', view='all') }}" class="btn btn-outline-secondary {% if view_all %}active{% endif %}">All Staff</a>
     </div>
     {% endif %}
+    {% if current_user.staff_profile %}
     <a href="{{ url_for('lesson_plans.new_plan') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Lesson Plan</a>
+    {% endif %}
   </div>
 </div>
 
