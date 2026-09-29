@@ -79,13 +79,10 @@ def _read_location_form():
 def class_picker():
     class_arms = ClassArm.query.join(AcademicSession).filter(AcademicSession.is_current.is_(True)).all()
 
-    # A teacher only sees classes they actually teach a subject in.
+    # A teacher only marks attendance for the class(es) they're the
+    # assigned Class Teacher of — not every class they teach a subject in.
     if current_user.role == Role.TEACHER and current_user.staff_profile:
-        from app.models.academic import ClassSubject
-        taught_arm_ids = {
-            cs.class_arm_id for cs in ClassSubject.query.filter_by(teacher_id=current_user.staff_profile.id).all()
-        }
-        class_arms = [a for a in class_arms if a.id in taught_arm_ids]
+        class_arms = [a for a in class_arms if a.class_teacher_id == current_user.staff_profile.id]
 
     return render_template("attendance/class_picker.html", class_arms=class_arms)
 
@@ -96,6 +93,14 @@ def class_picker():
 @permission_required("attendance.student.view")
 def mark_attendance(class_arm_id):
     class_arm = ClassArm.query.get_or_404(class_arm_id)
+
+    # Belt-and-braces: a teacher hitting this URL directly for a class
+    # they aren't the Class Teacher of is blocked, not just hidden from
+    # the picker above.
+    if current_user.role == Role.TEACHER:
+        if not current_user.staff_profile or class_arm.class_teacher_id != current_user.staff_profile.id:
+            abort(403)
+
     selected_date = _parse_date(request.values.get("date"))
     can_edit = has_permission(current_user, "attendance.student.mark")
 

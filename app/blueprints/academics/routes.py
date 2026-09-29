@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
+from datetime import datetime
+
 from app.extensions import db
 from app.models.user import Role, User
-from app.models.academic import AcademicSession, SchoolClass, ClassArm
+from app.models.academic import AcademicSession, SchoolClass, ClassArm, Term
 from app.models.people import Student, Staff
 from app.models.finance import FeeStructure
 from app.utils.decorators import roles_required, permission_required
@@ -288,3 +290,56 @@ def delete_arm(class_id, arm_id):
 
     flash(f"Arm '{name}' deleted.", "success")
     return redirect(url_for("academics.view_class", class_id=class_id))
+
+
+@academics_bp.route("/academics/terms")
+@login_required
+@roles_required(*MANAGE_ROLES)
+@permission_required("academics.manage")
+def list_terms():
+    terms = (
+        Term.query.join(AcademicSession)
+        .order_by(AcademicSession.name.desc(), Term.id.desc())
+        .all()
+    )
+    return render_template("academics/terms.html", terms=terms)
+
+
+@academics_bp.route("/academics/terms/<int:term_id>/deadlines", methods=["POST"])
+@login_required
+@roles_required(*MANAGE_ROLES)
+@permission_required("academics.manage")
+def set_term_deadlines(term_id):
+    term = Term.query.get_or_404(term_id)
+
+    def _parse(raw):
+        if not raw:
+            return None
+        try:
+            return datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    before = {
+        "result_entry_deadline": str(term.result_entry_deadline) if term.result_entry_deadline else None,
+        "lesson_plan_deadline": str(term.lesson_plan_deadline) if term.lesson_plan_deadline else None,
+    }
+
+    term.result_entry_deadline = _parse(request.form.get("result_entry_deadline"))
+    term.lesson_plan_deadline = _parse(request.form.get("lesson_plan_deadline"))
+
+    log_action(
+        action="term.deadlines_updated",
+        entity_type="Term",
+        entity_id=term.id,
+        before=before,
+        after={
+            "result_entry_deadline": str(term.result_entry_deadline) if term.result_entry_deadline else None,
+            "lesson_plan_deadline": str(term.lesson_plan_deadline) if term.lesson_plan_deadline else None,
+        },
+        description=f"{current_user.full_name} updated deadlines for {term.session.name} — {term.name}",
+    )
+    db.session.commit()
+
+    flash(f"Deadlines saved for {term.name}.", "success")
+    return redirect(url_for("academics.list_terms"))

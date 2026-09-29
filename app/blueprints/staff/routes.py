@@ -131,7 +131,23 @@ def create_staff():
 @permission_required('staff.view')
 def view_staff(staff_id):
     staff = Staff.query.get_or_404(staff_id)
-    return render_template("staff/view.html", staff=staff)
+
+    class_subjects = []
+    class_teacher_of = []
+    if staff.user.role == Role.TEACHER:
+        from app.models.academic import ClassSubject, ClassArm, AcademicSession
+
+        class_subjects = ClassSubject.query.filter_by(teacher_id=staff.id).all()
+
+        current_session = AcademicSession.query.filter_by(is_current=True).first()
+        if current_session:
+            class_teacher_of = (
+                ClassArm.query.filter_by(class_teacher_id=staff.id, session_id=current_session.id).all()
+            )
+
+    return render_template(
+        "staff/view.html", staff=staff, class_subjects=class_subjects, class_teacher_of=class_teacher_of
+    )
 
 
 @staff_bp.route("/staff/<int:staff_id>/edit", methods=["GET", "POST"])

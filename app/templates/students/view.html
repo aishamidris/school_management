@@ -146,8 +146,63 @@
 
     <div class="card mt-3">
       <div class="card-body">
-        <h6 class="text-muted text-uppercase small mb-2">Coming soon</h6>
-        <p class="text-muted small mb-0">Results and fee/payment history will appear directly on this profile in a future update — for now, find them under Fees and Results in the sidebar.</p>
+        <h6 class="text-muted text-uppercase small mb-2">
+          Fees {% if current_term %}— {{ current_term.name }}{% endif %}
+        </h6>
+        {% if not current_term %}
+        <p class="text-muted small mb-0">No current term is set.</p>
+        {% elif invoice %}
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted">Expected</span><span>₦{{ '{:,.2f}'.format(invoice.net_expected) }}</span>
+        </div>
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted">Paid</span><span>₦{{ '{:,.2f}'.format(invoice.total_paid) }}</span>
+        </div>
+        <div class="d-flex justify-content-between fw-bold mb-2">
+          <span>Outstanding</span><span>₦{{ '{:,.2f}'.format(invoice.outstanding) }}</span>
+        </div>
+        <span class="badge text-capitalize
+          {% if invoice.status == 'paid' %}bg-success
+          {% elif invoice.status in ['outstanding', 'overdue'] %}bg-danger
+          {% elif invoice.status == 'partially_paid' %}bg-warning text-dark
+          {% else %}bg-secondary{% endif %}">
+          {{ invoice.status.replace('_', ' ') }}
+        </span>
+        <a href="{{ url_for('finance.view_invoice', invoice_id=invoice.id) }}" class="btn btn-outline-secondary btn-sm w-100 mt-2">
+          <i class="bi bi-receipt"></i> View Invoice
+        </a>
+        {% else %}
+        <p class="text-muted small mb-0">No invoice raised for this term yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-2">
+          Results {% if current_term %}— {{ current_term.name }}{% endif %}
+        </h6>
+        {% if not current_term %}
+        <p class="text-muted small mb-0">No current term is set.</p>
+        {% elif results %}
+        <table class="table table-sm mb-2">
+          <thead class="table-light"><tr><th>Subject</th><th class="text-end">Total</th><th class="text-end">Grade</th></tr></thead>
+          <tbody>
+            {% for r in results %}
+            <tr>
+              <td>{{ r.class_subject.subject.name }}</td>
+              <td class="text-end">{{ r.total_score }}</td>
+              <td class="text-end"><span class="badge bg-primary">{{ r.grade or '—' }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if results_average is not none %}
+        <div class="text-end small"><strong>Average: {{ results_average }}</strong></div>
+        {% endif %}
+        {% else %}
+        <p class="text-muted small mb-0">No results entered for this term yet.</p>
+        {% endif %}
       </div>
     </div>
 

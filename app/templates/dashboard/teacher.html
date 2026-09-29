@@ -4,7 +4,7 @@
 <h4 class="brand-font mb-1">Welcome, {{ current_user.full_name }}</h4>
 <p class="text-muted mb-4">Here's your teaching overview.</p>
 
-{% if not class_subjects %}
+{% if not class_subjects and not class_teacher_of %}
 <div class="alert alert-info">
   You haven't been assigned any classes yet. Ask an admin to assign you a subject under Results → Assign Subjects.
 </div>
@@ -14,7 +14,7 @@
   <div class="col-md-4 col-sm-6">
     <div class="card stat-card stat-ink p-3">
       <div class="stat-icon"><i class="bi bi-journal-check"></i></div>
-      <div class="stat-label">Classes / Subjects</div>
+      <div class="stat-label">Subjects You Teach</div>
       <div class="stat-value">{{ class_subjects|length }}</div>
     </div>
   </div>
@@ -34,10 +34,28 @@
   </div>
 </div>
 
+{% if class_teacher_of %}
+<div class="card mb-3">
+  <div class="card-header bg-white"><strong><i class="bi bi-mortarboard-fill"></i> Class Teacher Of</strong></div>
+  <div class="card-body d-flex flex-wrap gap-2">
+    {% for arm in class_teacher_of %}
+    <a href="{{ url_for('attendance.mark_attendance', class_arm_id=arm.id) }}" class="btn btn-outline-primary btn-sm">
+      {{ arm.display_name }} <span class="text-muted">· {{ arm.students|selectattr('status', 'equalto', 'active')|list|length }} students</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <div class="row g-3">
   <div class="col-md-7">
     <div class="card">
-      <div class="card-header bg-white"><strong>My Classes</strong></div>
+      <div class="card-header bg-white"><strong>Subjects You Teach</strong></div>
+      {% if not class_subjects %}
+      <div class="card-body">
+        <p class="text-muted mb-0">No subjects assigned yet.</p>
+      </div>
+      {% else %}
       <div class="table-responsive">
         <table class="table mb-0 align-middle">
           <thead class="table-light"><tr><th>Class</th><th>Subject</th><th></th></tr></thead>
@@ -54,10 +72,35 @@
           </tbody>
         </table>
       </div>
+      {% endif %}
     </div>
   </div>
 
   <div class="col-md-5">
+    {% if term and (term.result_entry_deadline or term.lesson_plan_deadline) %}
+    <div class="card mb-3">
+      <div class="card-header bg-white"><strong>{{ term.name }} Deadlines</strong></div>
+      <div class="list-group list-group-flush">
+        {% if term.result_entry_deadline %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>Result Entry</div>
+          <span class="badge {% if term.result_entry_deadline < today %}bg-danger{% else %}bg-secondary{% endif %}">
+            {{ term.result_entry_deadline.strftime('%d %b') }}
+          </span>
+        </div>
+        {% endif %}
+        {% if term.lesson_plan_deadline %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>Lesson Plans</div>
+          <span class="badge {% if term.lesson_plan_deadline < today %}bg-danger{% else %}bg-secondary{% endif %}">
+            {{ term.lesson_plan_deadline.strftime('%d %b') }}
+          </span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card">
       <div class="card-header bg-white"><strong>Exam Question Deadlines</strong></div>
       <div class="list-group list-group-flush">

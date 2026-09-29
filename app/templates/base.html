@@ -77,8 +77,11 @@
         </a>
         {% endif %}
         {% if current_user.role in ['owner', 'admin'] and has_perm('academics.manage') %}
-        <a href="{{ url_for('academics.list_classes') }}" class="{% if request.blueprint == 'academics' %}active{% endif %}">
+        <a href="{{ url_for('academics.list_classes') }}" class="{% if request.endpoint and request.endpoint.startswith('academics.') and 'term' not in request.endpoint %}active{% endif %}">
           <i class="bi bi-diagram-3-fill"></i> Classes &amp; Arms
+        </a>
+        <a href="{{ url_for('academics.list_terms') }}" class="{% if request.endpoint and 'term' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-calendar-week"></i> Sessions &amp; Terms
         </a>
         {% endif %}
         {% if current_user.role in ['owner', 'admin'] and has_perm('reconciliation.view') %}

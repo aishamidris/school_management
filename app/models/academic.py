@@ -27,6 +27,12 @@ class Term(db.Model):
     # cannot be edited directly — only via a correction request/approval flow.
     is_closed = db.Column(db.Boolean, default=False)
 
+    # Owner/Admin-set reminders shown on the teacher dashboard, mirroring
+    # the per-exam question_deadline but scoped to the whole term since
+    # result entry and lesson plans aren't tied to one exam.
+    result_entry_deadline = db.Column(db.Date, nullable=True)
+    lesson_plan_deadline = db.Column(db.Date, nullable=True)
+
     __table_args__ = (db.UniqueConstraint("session_id", "name", name="uq_term_per_session"),)
 
 

@@ -6,7 +6,7 @@ from app.models.user import Role
 from app.models.people import Student, Staff
 from app.models.academic import AcademicSession, Term
 from app.models.finance import Invoice
-from app.models.exam import Result
+from app.models.exam import Result, Exam
 from app.models.tasks_comms import Task, TaskStatus
 from app.utils.permissions import has_permission
 
@@ -102,14 +102,25 @@ def accountant_dashboard():
 
 def teacher_dashboard():
     if not current_user.staff_profile:
-        return render_template("dashboard/teacher.html", class_subjects=[], total_students=0, exams_due=[])
+        return render_template(
+            "dashboard/teacher.html", class_subjects=[], class_teacher_of=[],
+            total_students=0, exams_due=[], term=None,
+        )
 
     from datetime import date
-    from app.models.academic import ClassSubject
-    from app.models.exam import Exam
+    from app.models.academic import ClassSubject, ClassArm
 
     class_subjects = ClassSubject.query.filter_by(teacher_id=current_user.staff_profile.id).all()
     class_arm_ids = {cs.class_arm_id for cs in class_subjects}
+
+    current_session = AcademicSession.query.filter_by(is_current=True).first()
+    class_teacher_of = []
+    if current_session:
+        class_teacher_of = (
+            ClassArm.query.filter_by(
+                class_teacher_id=current_user.staff_profile.id, session_id=current_session.id
+            ).all()
+        )
 
     total_students = (
         Student.query.filter(Student.class_arm_id.in_(class_arm_ids), Student.status == "active").count()
@@ -124,11 +135,15 @@ def teacher_dashboard():
         ).order_by(Exam.question_deadline).all()
         exams_due = exams[:5]
 
+    term = _current_term()
+
     return render_template(
         "dashboard/teacher.html",
         class_subjects=class_subjects,
+        class_teacher_of=class_teacher_of,
         total_students=total_students,
         exams_due=exams_due,
+        term=term,
         today=date.today(),
     )
 

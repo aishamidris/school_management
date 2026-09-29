@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Sessions & Terms{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="brand-font mb-1">Sessions &amp; Terms</h4>
+    <p class="text-muted mb-0 small">
+      Set the result-entry and lesson-plan deadlines for each term — these show up as reminders on
+      every teacher's dashboard, the same way exam question deadlines do.
+    </p>
+  </div>
+  <a href="{{ url_for('academics.list_classes') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-diagram-3-fill"></i> Classes &amp; Arms
+  </a>
+</div>
+
+{% if not terms %}
+<div class="alert alert-info">No academic sessions/terms have been set up yet.</div>
+{% endif %}
+
+{% for session_name, session_terms in terms|groupby('session.name') %}
+<div class="card mb-3">
+  <div class="card-header bg-white"><strong>{{ session_name }}</strong></div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Term</th>
+          <th>Status</th>
+          <th>Result-Entry Deadline</th>
+          <th>Lesson-Plan Deadline</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for term in session_terms %}
+        <tr>
+          <td>{{ term.name }}</td>
+          <td>
+            {% if term.is_current %}<span class="badge bg-success">Current</span>{% endif %}
+            {% if term.is_closed %}<span class="badge bg-secondary">Closed</span>{% endif %}
+          </td>
+          <td>{{ term.result_entry_deadline.strftime('%d %b %Y') if term.result_entry_deadline else '—' }}</td>
+          <td>{{ term.lesson_plan_deadline.strftime('%d %b %Y') if term.lesson_plan_deadline else '—' }}</td>
+          <td class="text-end">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#deadlinesModal{{ term.id }}">
+              <i class="bi bi-calendar-event"></i> Set Deadlines
+            </button>
+          </td>
+        </tr>
+
+        <div class="modal fade" id="deadlinesModal{{ term.id }}" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="POST" action="{{ url_for('academics.set_term_deadlines', term_id=term.id) }}">
+                <div class="modal-header">
+                  <h6 class="modal-title">{{ session_name }} — {{ term.name }}</h6>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label small text-muted">Result-Entry Deadline</label>
+                    <input type="date" name="result_entry_deadline" class="form-control"
+                           value="{{ term.result_entry_deadline.isoformat() if term.result_entry_deadline else '' }}">
+                    <div class="form-text">When teachers should have all CA/exam scores entered by.</div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small text-muted">Lesson-Plan Deadline</label>
+                    <input type="date" name="lesson_plan_deadline" class="form-control"
+                           value="{{ term.lesson_plan_deadline.isoformat() if term.lesson_plan_deadline else '' }}">
+                    <div class="form-text">When lesson plans for the term should be submitted by.</div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

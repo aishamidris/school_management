@@ -204,7 +204,35 @@ def view_student(student_id):
                 "rate": round(present / len(records) * 100, 1),
             }
 
-    return render_template("students/view.html", student=student, attendance_summary=attendance_summary)
+    current_session = AcademicSession.query.filter_by(is_current=True).first()
+    from app.models.academic import Term
+    current_term = (
+        Term.query.filter_by(session_id=current_session.id, is_current=True).first()
+        if current_session else None
+    )
+
+    invoice = None
+    if current_term and has_permission(current_user, "fees.view"):
+        from app.models.finance import Invoice
+        invoice = Invoice.query.filter_by(student_id=student.id, term_id=current_term.id).first()
+
+    results = []
+    results_average = None
+    if current_term and has_permission(current_user, "results.view"):
+        from app.models.exam import Result
+        results = Result.query.filter_by(student_id=student.id, term_id=current_term.id).all()
+        if results:
+            results_average = round(sum(float(r.total_score) for r in results) / len(results), 1)
+
+    return render_template(
+        "students/view.html",
+        student=student,
+        attendance_summary=attendance_summary,
+        current_term=current_term,
+        invoice=invoice,
+        results=results,
+        results_average=results_average,
+    )
 
 
 @students_bp.route("/students/<int:student_id>/edit", methods=["GET", "POST"])
