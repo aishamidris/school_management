@@ -23,7 +23,7 @@
     table.lp-table th, table.lp-table td { border: 1px solid #C7CCD1; padding: 8px 10px; vertical-align: top; font-size: 0.92rem; }
     table.lp-info td.lp-label { width: 22%; background: #F4F6F5; font-weight: 600; }
     table.lp-content thead th { background: #16233F; color: #fff; font-weight: 600; }
-    table.lp-content td.day-heading { background: #EDE3C8; font-weight: 700; text-align: center; }
+    .lp-day-label { display: block; background: #EDE3C8; font-weight: 700; padding: 4px 6px; margin: -8px -10px 6px; }
     .lp-empty { color: #9AA1AC; font-style: italic; }
     @media print {
       body { background: #fff; }
@@ -68,22 +68,28 @@
     <table class="lp-table lp-content">
       <thead>
         <tr>
-          <th style="width:40%">Content Development</th>
-          <th style="width:30%">Teacher's Activity</th>
-          <th style="width:30%">Pupil's Activity</th>
+          <th style="width:12%">Step</th>
+          <th style="width:44%">Teacher's Activity</th>
+          <th style="width:44%">Pupil's Activity</th>
         </tr>
       </thead>
       <tbody>
         {% for day in plan.days %}
-        <tr><td colspan="3" class="day-heading">{{ day.label }}</td></tr>
         {% for step in day.steps %}
         <tr>
-          <td style="white-space: pre-wrap;">{{ step.content_development or '' }}</td>
+          <td class="fw-semibold text-muted">
+            {% if loop.first %}<span class="lp-day-label">{{ day.label }}</span>{% endif %}
+            {{ step.label }}
+          </td>
           <td style="white-space: pre-wrap;">{{ step.teacher_activity or '' }}</td>
           <td style="white-space: pre-wrap;">{{ step.pupil_activity or '' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="3" class="lp-empty">No steps added for this day.</td></tr>
+        <tr>
+          <td><span class="lp-day-label">{{ day.label }}</span><span class="lp-empty d-block">No steps added for this day.</span></td>
+          <td></td>
+          <td></td>
+        </tr>
         {% endfor %}
         {% else %}
         <tr><td colspan="3" class="lp-empty">No content development steps added yet.</td></tr>
