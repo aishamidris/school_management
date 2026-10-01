@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ staff.user.full_name }} — Attendance{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('attendance.staff_term_summary', term_id=term.id if term else none) }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h4 class="mb-0 brand-font">{{ staff.user.full_name }}</h4>
+    <span class="badge bg-secondary text-capitalize ms-2">{{ staff.user.role }}</span>
+    {% if not staff.is_active %}<span class="badge bg-secondary ms-1">Inactive</span>{% endif %}
+  </div>
+  {% if terms %}
+  <form method="GET">
+    <select name="term_id" class="form-select form-select-sm" onchange="this.form.submit()">
+      {% for t in terms %}
+      <option value="{{ t.id }}" {% if term and t.id == term.id %}selected{% endif %}>{{ t.session.name }} — {{ t.name }}{% if t.is_current %} (current){% endif %}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+
+{% if not term %}
+<div class="alert alert-info">No terms have been set up yet.</div>
+{% elif not summary or not stats %}
+<div class="alert alert-warning">
+  <strong>{{ term.name }}</strong> has no start date yet, so there's no period to show.
+  {% if has_perm('academics.manage') %}<a href="{{ url_for('academics.list_terms') }}">Set the term dates</a> under Sessions &amp; Terms.{% endif %}
+</div>
+{% else %}
+
+<p class="text-muted small mb-3">
+  {{ term.session.name }} · {{ term.name }} · {{ summary.start.strftime('%d %b %Y') }} – {{ summary.end.strftime('%d %b %Y') }}
+  · {{ summary.school_days|length }} school day{{ '' if summary.school_days|length == 1 else 's' }} so far
+  {% if stats.rank %}· <strong>Punctuality rank {{ stats.rank }} of {{ ranked_total }}</strong>{% endif %}
+</p>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-2 col-6"><div class="card stat-card p-3"><div class="stat-label">Days Present</div><div class="stat-value">{{ stats.days_present }}</div></div></div>
+  <div class="col-md-2 col-6"><div class="card stat-card stat-green p-3"><div class="stat-label">On Time</div><div class="stat-value">{{ stats.on_time }}</div></div></div>
+  <div class="col-md-2 col-6"><div class="card stat-card p-3"><div class="stat-label">Late</div><div class="stat-value">{{ stats.late }}</div></div></div>
+  <div class="col-md-2 col-6"><div class="card stat-card p-3"><div class="stat-label">On Leave</div><div class="stat-value">{{ stats.leave_days }}</div></div></div>
+  <div class="col-md-2 col-6"><div class="card stat-card stat-red p-3"><div class="stat-label">Absent</div><div class="stat-value">{{ stats.absent }}</div></div></div>
+  <div class="col-md-2 col-6"><div class="card stat-card stat-ink p-3"><div class="stat-label">Punctuality</div><div class="stat-value" style="font-size:1.5rem;">{{ (stats.punctuality_rate ~ '%') if stats.punctuality_rate is not none else '—' }}</div></div></div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <strong>Daily Record</strong>
+    <span class="text-muted small">
+      {% if stats.late %}Average {{ stats.avg_minutes_late }} min late on late days · {{ stats.total_minutes_late }} min in total{% endif %}
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th><th>Location</th></tr>
+      </thead>
+      <tbody>
+        {% for e in stats.entries|reverse %}
+        {% if e.state != 'na' %}
+        <tr>
+          <td>{{ e.date.strftime('%a, %d %b %Y') }}</td>
+          <td>
+            {% if e.state == 'present' %}<span class="badge bg-success">On time</span>
+            {% elif e.state == 'late' %}<span class="badge bg-warning text-dark"><i class="bi bi-alarm"></i> Late · {{ e.record.minutes_late }} min</span>
+            {% elif e.state == 'leave' %}<span class="badge bg-info text-dark"><i class="bi bi-calendar2-x"></i> On leave</span>
+              <span class="small text-muted">{{ e.leave.type_label }}</span>
+            {% elif e.state == 'not_in_yet' %}<span class="badge bg-light text-dark">Not in yet</span>
+            {% else %}<span class="badge bg-danger">Absent</span>{% endif %}
+          </td>
+          <td class="small">{{ e.record.check_in|localtime if e.record else '—' }}</td>
+          <td class="small">{{ e.record.check_out|localtime if e.record and e.record.check_out else '—' }}</td>
+          <td class="small">
+            {% if e.record and e.record.check_in_verified is not none %}
+              {% if e.record.check_in_verified %}<span class="text-success"><i class="bi bi-geo-alt-fill"></i> On-site</span>
+              {% else %}<span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i> Off-site</span>{% endif %}
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No school days recorded in this term yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

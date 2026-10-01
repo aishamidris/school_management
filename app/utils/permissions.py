@@ -42,7 +42,10 @@ PERMISSIONS = {
     "attendance.student.mark": ("Mark daily student attendance", "Attendance"),
     "attendance.staff.view": ("View staff attendance records", "Attendance"),
     "attendance.staff.mark": ("Mark daily staff attendance", "Attendance"),
-    "attendance.settings": ("Configure school location & check-in geofencing", "Attendance"),
+    "attendance.settings": ("Configure school location, check-in geofencing & the late cut-off time", "Attendance"),
+    "leave.manage": ("Review staff leave / absence requests (approve or reject)", "Staff Leave & Duties"),
+    "duties.view": ("View the duty roster", "Staff Leave & Duties"),
+    "duties.manage": ("Define duties and assign them to staff", "Staff Leave & Duties"),
     "audit.view": ("View the full audit log", "Oversight"),
     "academics.manage": ("Add, edit, or remove classes and arms", "Academics"),
 }
@@ -64,6 +67,9 @@ DEFAULT_PERMISSIONS = {
         "attendance.staff.view", "attendance.staff.mark", "attendance.settings",
         "audit.view",
         "academics.manage",
+        # Admins can review leave and see the roster out of the box; defining
+        # and assigning duties stays with the owner until they grant it.
+        "leave.manage", "duties.view",
     },
     Role.ACCOUNTANT: {
         "students.view",
@@ -96,6 +102,14 @@ STRUCTURALLY_RESTRICTED = {
     (Role.TEACHER, "attendance.staff.view"),
     (Role.TEACHER, "attendance.staff.mark"),
     (Role.TEACHER, "audit.view"),
+    # Reviewing leave and running the duty roster are management functions;
+    # teachers and accountants only ever see their own requests and duties.
+    (Role.ACCOUNTANT, "leave.manage"),
+    (Role.ACCOUNTANT, "duties.view"),
+    (Role.ACCOUNTANT, "duties.manage"),
+    (Role.TEACHER, "leave.manage"),
+    (Role.TEACHER, "duties.view"),
+    (Role.TEACHER, "duties.manage"),
 }
 
 

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Staff Term Summary{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('attendance.staff_overview') }}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h4 class="mb-0 brand-font"><i class="bi bi-trophy"></i> Staff Punctuality — Term Summary</h4>
+  </div>
+  {% if terms %}
+  <form method="GET">
+    <select name="term_id" class="form-select form-select-sm" onchange="this.form.submit()">
+      {% for t in terms %}
+      <option value="{{ t.id }}" {% if term and t.id == term.id %}selected{% endif %}>{{ t.session.name }} — {{ t.name }}{% if t.is_current %} (current){% endif %}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+
+{% if not term %}
+<div class="alert alert-info">No terms have been set up yet.</div>
+
+{% elif not summary %}
+<div class="alert alert-warning">
+  <strong>{{ term.name }}</strong> has no start date yet, so there's no period to summarise.
+  {% if has_perm('academics.manage') %}
+  <a href="{{ url_for('academics.list_terms') }}">Set the term dates</a> under Sessions &amp; Terms.
+  {% else %}
+  Ask the owner to set the term dates under Sessions &amp; Terms.
+  {% endif %}
+</div>
+
+{% else %}
+<p class="text-muted small mb-3">
+  {{ term.session.name }} · {{ term.name }} · {{ summary.start.strftime('%d %b %Y') }} – {{ summary.end.strftime('%d %b %Y') }}
+  · <strong>{{ summary.school_days|length }}</strong> school day{{ '' if summary.school_days|length == 1 else 's' }} so far
+</p>
+
+{% if not settings.tracks_lateness %}
+<div class="alert alert-warning py-2 small">
+  <i class="bi bi-alarm"></i> No late cut-off is set, so nobody has been flagged late and everyone shows 100% punctuality.
+  {% if has_perm('attendance.settings') %}<a href="{{ url_for('attendance.punctuality_settings') }}">Set the cut-off time.</a>{% endif %}
+</div>
+{% endif %}
+
+{% if not summary.school_days %}
+<div class="alert alert-secondary">No staff check-ins have been recorded in this term yet.</div>
+{% else %}
+
+{% set top = summary.ranked|selectattr('rank', 'equalto', 1)|list %}
+{% if top %}
+<div class="card mb-3" style="border-left: 4px solid var(--gold);">
+  <div class="card-body py-2 d-flex align-items-center gap-3">
+    <i class="bi bi-trophy-fill fs-3" style="color: var(--gold);"></i>
+    <div>
+      <div class="text-muted small">Most punctual this term</div>
+      <div class="fw-bold">
+        {% for r in top %}<a href="{{ url_for('attendance.staff_term_detail', staff_id=r.staff.id, term_id=term.id) }}" class="text-decoration-none">{{ r.staff.user.full_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+        <span class="text-muted fw-normal">— {{ top[0].punctuality_rate }}% on time{% if top[0].total_minutes_late %}, {{ top[0].total_minutes_late }} min late in total{% endif %}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th style="width:56px;">Rank</th>
+          <th>Staff</th>
+          <th class="text-center">Days Present</th>
+          <th class="text-center">On Time</th>
+          <th class="text-center">Late</th>
+          <th class="text-center">Avg Late</th>
+          <th style="min-width:150px;">Punctuality</th>
+          <th class="text-center">Attendance</th>
+          <th class="text-center">On Leave</th>
+          <th class="text-center">Absent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in summary.rows %}
+        <tr>
+          <td class="text-center">
+            {% if r.rank == 1 %}<i class="bi bi-trophy-fill" style="color: var(--gold);" title="Most punctual"></i>
+            {% elif r.rank %}<span class="mono">{{ r.rank }}</span>
+            {% else %}<span class="text-muted" title="Not ranked — present on fewer than half of the school days that applied">—</span>{% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('attendance.staff_term_detail', staff_id=r.staff.id, term_id=term.id) }}" class="text-decoration-none">{{ r.staff.user.full_name }}</a>
+            <span class="badge bg-secondary text-capitalize ms-1">{{ r.staff.user.role }}</span>
+          </td>
+          <td class="text-center">{{ r.days_present }}</td>
+          <td class="text-center">{{ r.on_time }}</td>
+          <td class="text-center">{% if r.late %}<span class="badge bg-warning text-dark">{{ r.late }}</span>{% else %}0{% endif %}</td>
+          <td class="text-center small">{% if r.late %}{{ r.avg_minutes_late }} min{% else %}—{% endif %}</td>
+          <td>
+            {% if r.punctuality_rate is not none %}
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height:8px;">
+                <div class="progress-bar {% if r.punctuality_rate >= 90 %}bg-success{% elif r.punctuality_rate >= 70 %}bg-warning{% else %}bg-danger{% endif %}"
+                     style="width: {{ r.punctuality_rate }}%"></div>
+              </div>
+              <span class="small mono">{{ r.punctuality_rate }}%</span>
+            </div>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-center small">{{ (r.attendance_rate ~ '%') if r.attendance_rate is not none else '—' }}</td>
+          <td class="text-center">{% if r.leave_days %}<span class="badge bg-info text-dark">{{ r.leave_days }}</span>{% else %}0{% endif %}</td>
+          <td class="text-center">{% if r.absent %}<span class="badge bg-danger">{{ r.absent }}</span>{% else %}0{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p class="text-muted small mt-3" style="max-width: 760px;">
+  <strong>How this is counted.</strong> A school day is any day in the term when at least one staff member checked in,
+  so weekends and closures never count against anyone. Punctuality is on-time check-ins ÷ days present.
+  Attendance is days present ÷ (days present + absent); approved leave days are left out of that, since being on
+  approved leave isn't a failure to attend. Ranking goes by punctuality, then fewer total minutes late; only staff
+  present on at least half of the school days that applied to them are ranked. Today isn't counted as an absence
+  until the day is over.
+</p>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -58,6 +58,9 @@
   {% endif %}
 </div>
 
+{% include "dashboard/_admin_attendance_panel.html" %}
+{% include "dashboard/_staff_self_service.html" %}
+
 {% if not (has_perm('students.view') or has_perm('fees.view') or has_perm('results.view') or has_perm('results.enter') or has_perm('exams.manage') or has_perm('staff.view')) %}
 <div class="alert alert-secondary mt-3">
   You don't have any modules enabled yet. Ask the school owner to grant access under Permissions.

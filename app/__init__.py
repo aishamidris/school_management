@@ -48,6 +48,8 @@ def create_app(config_class=Config):
     from app.blueprints.profile.routes import profile_bp
     from app.blueprints.academics.routes import academics_bp
     from app.blueprints.lesson_plans.routes import lesson_plans_bp
+    from app.blueprints.leave.routes import leave_bp
+    from app.blueprints.duties.routes import duties_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -63,6 +65,16 @@ def create_app(config_class=Config):
     app.register_blueprint(profile_bp)
     app.register_blueprint(academics_bp)
     app.register_blueprint(lesson_plans_bp)
+    app.register_blueprint(leave_bp)
+    app.register_blueprint(duties_bp)
+
+    # Timestamps are stored as naive UTC; this prints them in the school's
+    # own timezone (set under Staff Attendance -> Late Cut-off).
+    from app.utils.timeutils import format_local
+
+    @app.template_filter("localtime")
+    def localtime_filter(dt, fmt="%H:%M"):
+        return format_local(dt, fmt)
 
     # Make has_perm('key') available in every template, checking the
     # currently logged-in user against the granular permission system.

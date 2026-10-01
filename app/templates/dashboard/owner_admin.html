@@ -57,6 +57,9 @@
   </div>
 </div>
 
+{% include "dashboard/_admin_attendance_panel.html" %}
+{% if current_user.role != 'owner' %}{% include "dashboard/_staff_self_service.html" %}{% endif %}
+
 <div class="card mt-4">
   <div class="card-body d-flex align-items-start gap-3">
     <i class="bi bi-shield-exclamation fs-3" style="color: var(--gold);"></i>

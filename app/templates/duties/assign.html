@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Assignment' if assignment else 'Assign Duty' }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('duties.roster') }}" class="btn btn-sm btn-outline-secondary me-2"><i class="bi bi-arrow-left"></i></a>
+  <h4 class="mb-0 brand-font"><i class="bi bi-person-plus"></i> {{ 'Edit Assignment' if assignment else 'Assign Duty' }}</h4>
+</div>
+
+{% if not duties %}
+<div class="alert alert-info">
+  No active duties yet. <a href="{{ url_for('duties.duty_types') }}">Define a duty</a> first, then come back to assign staff to it.
+</div>
+{% else %}
+<div class="card" style="max-width: 760px;">
+  <div class="card-body">
+    <form method="POST">
+      <div class="mb-3">
+        <label class="form-label small text-muted">Duty</label>
+        <select name="duty_id" class="form-select" required>
+          <option value="">Choose a duty…</option>
+          {% for d in duties %}
+          <option value="{{ d.id }}" {% if form.get('duty_id')|string == d.id|string %}selected{% endif %}>{{ d.title }}{% if d.location %} — {{ d.location }}{% endif %}{% if not d.is_active %} (inactive){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if assignment %}
+      <div class="mb-3">
+        <label class="form-label small text-muted">Staff member</label>
+        <select name="staff_id" class="form-select" required>
+          {% for s in staff_options %}
+          <option value="{{ s.id }}" {% if form.get('staff_id')|string == s.id|string %}selected{% endif %}>{{ s.user.full_name }} ({{ s.user.role }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <div class="mb-3">
+        <label class="form-label small text-muted">Staff <span class="text-muted">(pick one or more)</span></label>
+        <div class="border rounded p-2" style="max-height:220px; overflow:auto;">
+          {% for s in staff_options %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="staff_ids" value="{{ s.id }}" id="st{{ s.id }}" {% if s.id|string in selected_staff %}checked{% endif %}>
+            <label class="form-check-label" for="st{{ s.id }}">{{ s.user.full_name }} <span class="text-muted small text-capitalize">· {{ s.user.role }}</span></label>
+          </div>
+          {% else %}
+          <div class="text-muted small">No active staff.</div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="row">
+        <div class="col-sm-6 mb-3">
+          <label class="form-label small text-muted">From (date)</label>
+          <input type="date" name="start_date" id="dutyStart" class="form-control" value="{{ form.get('start_date', '') }}" required>
+        </div>
+        <div class="col-sm-6 mb-3">
+          <label class="form-label small text-muted">To (date, inclusive)</label>
+          <input type="date" name="end_date" id="dutyEnd" class="form-control" value="{{ form.get('end_date', '') }}">
+          <div class="form-text">Leave blank for a single day. A duty week is Monday to Friday.</div>
+        </div>
+        <div class="col-sm-6 mb-3">
+          <label class="form-label small text-muted">Daily start time <span class="text-muted">(optional)</span></label>
+          <input type="time" name="start_time" class="form-control" value="{{ form.get('start_time', '') }}">
+        </div>
+        <div class="col-sm-6 mb-3">
+          <label class="form-label small text-muted">Daily end time <span class="text-muted">(optional)</span></label>
+          <input type="time" name="end_time" class="form-control" value="{{ form.get('end_time', '') }}">
+          <div class="form-text">Leave both times blank if the duty runs all day.</div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label small text-muted">Instructions for this assignment <span class="text-muted">(optional)</span></label>
+        <input type="text" name="notes" class="form-control" maxlength="255" value="{{ form.get('notes', '') }}">
+      </div>
+
+      <button class="btn btn-primary btn-sm">{{ 'Save Changes' if assignment else 'Assign' }}</button>
+      <a href="{{ url_for('duties.roster') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+    </form>
+  </div>
+</div>
+<script>
+  (function () {
+    var s = document.getElementById('dutyStart'), e = document.getElementById('dutyEnd');
+    if (!s || !e) return;
+    s.addEventListener('change', function () { if (s.value) { e.min = s.value; if (e.value && e.value < s.value) e.value = s.value; } });
+  })();
+</script>
+{% endif %}
+{% endblock %}

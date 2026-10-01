@@ -37,6 +37,12 @@ class StaffAttendance(db.Model):
     check_in = db.Column(db.DateTime)
     check_out = db.Column(db.DateTime)
 
+    # Decided once, at check-in, against the cut-off in force at that
+    # moment, and then stored — so changing the cut-off later never
+    # rewrites history.
+    is_late = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    minutes_late = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+
     # Location captured from the staff member's browser at the moment of
     # check-in/out, used to verify they were actually on campus. verified
     # is None when there's nothing to judge (no school location configured

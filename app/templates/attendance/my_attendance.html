@@ -4,6 +4,12 @@
 <h4 class="brand-font mb-1"><i class="bi bi-clock-history"></i> My Attendance</h4>
 <p class="text-muted mb-4">{{ today.strftime('%A, %d %B %Y') }}</p>
 
+{% if my_leave and (not today_record or not today_record.check_in) %}
+<div class="alert alert-info py-2 small">
+  <i class="bi bi-calendar2-x"></i> You're on approved <strong>{{ my_leave.type_label|lower }}</strong> today, so you'll show as on leave rather than absent. You can still check in if you come in.
+</div>
+{% endif %}
+
 <div class="row g-3">
   <div class="col-md-5">
     <div class="card">
@@ -20,7 +26,8 @@
             <button type="submit" class="btn btn-primary" id="checkinBtn"><i class="bi bi-box-arrow-in-right"></i> Check In</button>
           </form>
         {% elif not today_record.check_out %}
-          <p class="mb-1">Checked in at <strong>{{ today_record.check_in.strftime('%H:%M') }}</strong></p>
+          <p class="mb-1">Checked in at <strong>{{ today_record.check_in|localtime }}</strong>
+            {% if today_record.is_late %}<span class="badge bg-warning text-dark ms-1"><i class="bi bi-alarm"></i> Late · {{ today_record.minutes_late }} min</span>{% endif %}</p>
           {% if today_record.check_in_verified is not none %}
             {% if today_record.check_in_verified %}
             <span class="badge bg-success-subtle text-success-emphasis mb-2"><i class="bi bi-geo-alt-fill"></i> On-site</span>
@@ -36,8 +43,9 @@
             <button type="submit" class="btn btn-outline-secondary" id="checkoutBtn"><i class="bi bi-box-arrow-right"></i> Check Out</button>
           </form>
         {% else %}
-          <p class="mb-1">Checked in at <strong>{{ today_record.check_in.strftime('%H:%M') }}</strong></p>
-          <p class="mb-0">Checked out at <strong>{{ today_record.check_out.strftime('%H:%M') }}</strong></p>
+          <p class="mb-1">Checked in at <strong>{{ today_record.check_in|localtime }}</strong>
+            {% if today_record.is_late %}<span class="badge bg-warning text-dark ms-1"><i class="bi bi-alarm"></i> Late · {{ today_record.minutes_late }} min</span>{% endif %}</p>
+          <p class="mb-0">Checked out at <strong>{{ today_record.check_out|localtime }}</strong></p>
           <span class="badge bg-success mt-2">Day complete</span>
         {% endif %}
       </div>
@@ -60,10 +68,10 @@
                   {% elif r.status == 'absent' %}bg-danger
                   {% elif r.status == 'late' %}bg-warning text-dark
                   {% else %}bg-secondary{% endif %}">
-                  {{ r.status|capitalize }}
+                  {{ r.status|capitalize }}{% if r.is_late and r.minutes_late %} · {{ r.minutes_late }} min{% endif %}
                 </span>
               </td>
-              <td class="small">{{ r.check_in.strftime('%H:%M') if r.check_in else '—' }}</td>
+              <td class="small">{{ r.check_in|localtime if r.check_in else '—' }}</td>
               <td class="small">
                 {% if r.check_in_verified is not none %}
                   {% if r.check_in_verified %}
@@ -75,7 +83,7 @@
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
-              <td class="small">{{ r.check_out.strftime('%H:%M') if r.check_out else '—' }}</td>
+              <td class="small">{{ r.check_out|localtime if r.check_out else '—' }}</td>
             </tr>
             {% else %}
             <tr><td colspan="5" class="text-center text-muted py-3">No attendance history yet.</td></tr>

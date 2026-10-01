@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Late Cut-off{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('attendance.staff_overview') }}" class="btn btn-sm btn-outline-secondary me-2">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="mb-0 brand-font"><i class="bi bi-alarm"></i> Late Cut-off</h4>
+</div>
+
+<p class="text-muted mb-4" style="max-width: 640px;">
+  Staff who check in after this time are flagged <strong>late</strong>. The flag is decided at the moment of
+  check-in and saved with that day's record, so changing the time later only affects check-ins from then on —
+  earlier days and past term summaries stay as they were.
+</p>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Staff must check in by</label>
+            <input type="time" name="late_cutoff_time" class="form-control" style="max-width:180px;"
+                   value="{{ settings.late_cutoff_time.strftime('%H:%M') if settings.late_cutoff_time else '' }}">
+            <div class="form-text">
+              Checking in at exactly this time (or any time within that minute) is on time; the next minute is late.
+              Leave blank to turn lateness tracking off.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-muted">School timezone</label>
+            <input type="text" name="timezone" class="form-control" style="max-width:260px;" list="tzOptions"
+                   value="{{ settings.timezone or default_tz }}">
+            <datalist id="tzOptions">
+              <option value="Africa/Lagos">
+              <option value="Africa/Accra">
+              <option value="Africa/Nairobi">
+              <option value="Africa/Johannesburg">
+              <option value="Europe/London">
+              <option value="UTC">
+            </datalist>
+            <div class="form-text">The cut-off is read in this timezone, and check-in times are displayed in it.</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white"><strong>Current Setting</strong></div>
+      <div class="card-body">
+        {% if settings.tracks_lateness %}
+        <p class="mb-1"><strong>Cut-off:</strong> <span class="mono">{{ settings.late_cutoff_time.strftime('%H:%M') }}</span> ({{ settings.timezone or default_tz }})</p>
+        <p class="text-muted small mb-0">Check-ins after {{ settings.late_cutoff_time.strftime('%H:%M') }} are flagged late and counted in each term's punctuality ranking.</p>
+        {% else %}
+        <p class="text-muted mb-0">No cut-off set — nobody is being flagged late, and every staff member will show 100% punctuality in term summaries.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

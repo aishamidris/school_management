@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Duty Roster{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 brand-font"><i class="bi bi-clipboard2-check"></i> Duty Roster</h4>
+  {% if can_manage %}
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('duties.duty_types') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-check"></i> Define Duties</a>
+    <a href="{{ url_for('duties.assign') }}" class="btn btn-sm btn-primary"><i class="bi bi-person-plus"></i> Assign Duty</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-white"><strong><i class="bi bi-broadcast"></i> On duty today</strong>
+    <span class="text-muted small ms-2">{{ today.strftime('%A, %d %b') }}</span></div>
+  {% if on_duty_today %}
+  <div class="list-group list-group-flush">
+    {% for a in on_duty_today %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <div><strong>{{ a.staff.user.full_name }}</strong> <span class="text-muted">— {{ a.duty.title }}{% if a.duty.location %}, {{ a.duty.location }}{% endif %}</span></div>
+      <span class="badge bg-light text-dark">{{ a.time_window_label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card-body text-muted small">Nobody is assigned a duty today.</div>
+  {% endif %}
+</div>
+
+<form method="GET" class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="when" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="active" {% if when == 'active' %}selected{% endif %}>Current &amp; upcoming</option>
+      <option value="past" {% if when == 'past' %}selected{% endif %}>Past</option>
+      <option value="all" {% if when == 'all' %}selected{% endif %}>All</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="duty_id" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">All duties</option>
+      {% for d in duties %}<option value="{{ d.id }}" {% if duty_id == d.id %}selected{% endif %}>{{ d.title }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="staff_id" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">All staff</option>
+      {% for s in staff_options %}<option value="{{ s.id }}" {% if staff_id == s.id %}selected{% endif %}>{{ s.user.full_name }}</option>{% endfor %}
+    </select>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Duty</th><th>Staff</th><th>Dates</th><th>Time</th><th>Status</th>{% if can_manage %}<th></th>{% endif %}</tr>
+      </thead>
+      <tbody>
+        {% for a in assignments %}
+        {% set state = a.state_on(today) %}
+        <tr>
+          <td>
+            {{ a.duty.title }}
+            {% if a.duty.location %}<div class="small text-muted">{{ a.duty.location }}</div>{% endif %}
+            {% if a.notes %}<div class="small text-muted fst-italic">{{ a.notes }}</div>{% endif %}
+          </td>
+          <td>
+            {{ a.staff.user.full_name }}
+            {% if a.id in conflicts %}
+            <div><span class="badge bg-info text-dark" title="Approved {{ conflicts[a.id].type_label|lower }}: {{ conflicts[a.id].start_date.strftime('%d %b') }} – {{ conflicts[a.id].end_date.strftime('%d %b') }}">
+              <i class="bi bi-calendar2-x"></i> On leave in this period</span></div>
+            {% endif %}
+          </td>
+          <td class="small">
+            {% if a.start_date == a.end_date %}{{ a.start_date.strftime('%a, %d %b %Y') }}
+            {% else %}{{ a.start_date.strftime('%d %b') }} – {{ a.end_date.strftime('%d %b %Y') }}{% endif %}
+          </td>
+          <td class="small mono">{{ a.time_window_label }}</td>
+          <td>
+            <span class="badge {% if state == 'current' %}bg-success{% elif state == 'upcoming' %}bg-primary{% else %}bg-secondary{% endif %} text-capitalize">{{ state }}</span>
+          </td>
+          {% if can_manage %}
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('duties.edit_assignment', assignment_id=a.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            <form method="POST" action="{{ url_for('duties.delete_assignment', assignment_id=a.id) }}" class="d-inline"
+                  onsubmit="return confirm('Remove this assignment for {{ a.staff.user.full_name|e }}?');">
+              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ 6 if can_manage else 5 }}" class="text-center text-muted py-4">
+          No duty assignments{% if when == 'active' %} coming up{% endif %}.
+          {% if can_manage %}<a href="{{ url_for('duties.assign') }}">Assign one.</a>{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

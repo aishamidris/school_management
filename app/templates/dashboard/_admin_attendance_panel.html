@@ -1,0 +1,95 @@
+{# Owner/admin dashboard block. Expects: panel (see _admin_attendance_panel in main/routes.py) #}
+{% if panel.snapshot is defined or panel.pending_leave is defined or panel.on_duty is defined %}
+<h6 class="brand-font mt-4 mb-2 text-uppercase text-muted small">Staff Attendance, Leave &amp; Duties</h6>
+<div class="row g-3">
+
+  {% if panel.snapshot is defined %}
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-person-check-fill"></i> Today · {{ panel.today.strftime('%d %b') }}</strong>
+        <a href="{{ url_for('attendance.staff_overview') }}" class="btn btn-sm btn-outline-secondary">Staff attendance</a>
+      </div>
+      <div class="card-body pb-2">
+        <div class="row text-center g-2 mb-3">
+          <div class="col-3"><div class="stat-value" style="font-size:1.5rem;">{{ panel.snapshot['in'] }}<span class="text-muted fs-6">/{{ panel.snapshot.total }}</span></div><div class="stat-label">Checked in</div></div>
+          <div class="col-3"><div class="stat-value" style="font-size:1.5rem;">{{ panel.snapshot.late }}</div><div class="stat-label">Late</div></div>
+          <div class="col-3"><div class="stat-value" style="font-size:1.5rem;">{{ panel.snapshot.leave }}</div><div class="stat-label">On leave</div></div>
+          <div class="col-3"><div class="stat-value" style="font-size:1.5rem;">{{ panel.snapshot.total - panel.snapshot['in'] - panel.snapshot.leave }}</div><div class="stat-label">Not in</div></div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <strong class="small">Most punctual{% if panel.term %} · {{ panel.term.name }}{% endif %}</strong>
+          <a href="{{ url_for('attendance.staff_term_summary') }}" class="small">Full term summary →</a>
+        </div>
+        {% if panel.top %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <tbody>
+              {% for r in panel.top %}
+              <tr>
+                <td style="width:36px;" class="text-center">
+                  {% if r.rank == 1 %}<i class="bi bi-trophy-fill" style="color: var(--gold);"></i>{% else %}<span class="mono">{{ r.rank }}</span>{% endif %}
+                </td>
+                <td><a href="{{ url_for('attendance.staff_term_detail', staff_id=r.staff.id, term_id=panel.term.id) }}" class="text-decoration-none">{{ r.staff.user.full_name }}</a></td>
+                <td class="small text-muted text-end">{{ r.on_time }}/{{ r.days_present }} on time</td>
+                <td class="text-end mono small" style="width:64px;">{{ r.punctuality_rate }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% elif panel.term and not panel.term.start_date %}
+        <p class="small text-muted mb-1">Set the dates for {{ panel.term.name }} under Sessions &amp; Terms to start tracking punctuality for the term.</p>
+        {% else %}
+        <p class="small text-muted mb-1">No check-ins recorded this term yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="col-lg-5">
+    {% if panel.pending_leave is defined %}
+    <div class="card mb-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-calendar2-check"></i> Leave requests
+          {% if panel.pending_leave_total %}<span class="badge bg-warning text-dark ms-1">{{ panel.pending_leave_total }} pending</span>{% endif %}</strong>
+        <a href="{{ url_for('leave.review_requests') }}" class="btn btn-sm btn-outline-secondary">Review</a>
+      </div>
+      <div class="list-group list-group-flush">
+        {% for r in panel.pending_leave %}
+        <a href="{{ url_for('leave.review_requests') }}" class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between"><span>{{ r.staff.user.full_name }}</span><span class="small text-muted">{{ r.type_label }}</span></div>
+          <div class="small text-muted">
+            {% if r.start_date == r.end_date %}{{ r.start_date.strftime('%d %b') }}{% else %}{{ r.start_date.strftime('%d %b') }} – {{ r.end_date.strftime('%d %b') }}{% endif %}
+          </div>
+        </a>
+        {% else %}
+        <div class="list-group-item text-center text-muted small py-3">Nothing waiting for review.</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if panel.on_duty is defined %}
+    <div class="card">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-clipboard2-check"></i> On duty today</strong>
+        <a href="{{ url_for('duties.roster') }}" class="btn btn-sm btn-outline-secondary">Roster</a>
+      </div>
+      <div class="list-group list-group-flush">
+        {% for a in panel.on_duty %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>{{ a.staff.user.full_name }} <span class="text-muted small">— {{ a.duty.title }}</span></div>
+          <span class="small mono text-muted">{{ a.time_window_label }}</span>
+        </div>
+        {% else %}
+        <div class="list-group-item text-center text-muted small py-3">Nobody is assigned a duty today.</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

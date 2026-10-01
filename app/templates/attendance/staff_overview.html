@@ -3,8 +3,14 @@
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <h4 class="mb-0 brand-font"><i class="bi bi-people-fill"></i> Staff Attendance</h4>
-  <div class="d-flex align-items-center gap-2">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="{{ url_for('attendance.staff_term_summary') }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-trophy"></i> Term Summary
+    </a>
     {% if has_perm('attendance.settings') %}
+    <a href="{{ url_for('attendance.punctuality_settings') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-alarm"></i> Late Cut-off
+    </a>
     <a href="{{ url_for('attendance.location_settings') }}" class="btn btn-sm btn-outline-secondary">
       <i class="bi bi-geo-alt"></i> Location Settings
     </a>
@@ -16,8 +22,10 @@
 </div>
 
 <div class="alert alert-secondary py-2 small mb-3">
-  <i class="bi bi-info-circle"></i> {{ present_count }} of {{ total_staff }} staff checked in as present on {{ selected_date.strftime('%d %b %Y') }}.
+  <i class="bi bi-info-circle"></i> {{ present_count }} of {{ total_staff }} staff checked in on {{ selected_date.strftime('%d %b %Y') }}
+  {%- if late_count %} ({{ late_count }} late){% endif %}{% if leave_count %}, {{ leave_count }} on approved leave{% endif %}.
   This reflects each staff member's own check-in — it isn't editable from here.
+  {% if settings.tracks_lateness %}Late cut-off: <strong>{{ settings.late_cutoff_time.strftime('%H:%M') }}</strong>.{% endif %}
 </div>
 
 <div class="card">
@@ -29,22 +37,17 @@
       <tbody>
         {% for row in rows %}
         <tr>
-          <td>{{ row.staff.user.full_name }}</td>
+          <td><a href="{{ url_for('attendance.staff_term_detail', staff_id=row.staff.id) }}" class="text-decoration-none">{{ row.staff.user.full_name }}</a></td>
           <td><span class="badge bg-secondary text-capitalize">{{ row.staff.user.role }}</span></td>
           <td>
-            {% if row.record %}
-            <span class="badge
-              {% if row.record.status == 'present' %}bg-success
-              {% elif row.record.status == 'absent' %}bg-danger
-              {% elif row.record.status == 'late' %}bg-warning text-dark
-              {% else %}bg-secondary{% endif %}">
-              {{ row.record.status|capitalize }}
-            </span>
-            {% else %}
-            <span class="badge bg-light text-dark">Not checked in</span>
-            {% endif %}
+            {% if row.state == 'present' %}<span class="badge bg-success">Present</span>
+            {% elif row.state == 'late' %}<span class="badge bg-warning text-dark"><i class="bi bi-alarm"></i> Late · {{ row.record.minutes_late }} min</span>
+            {% elif row.state == 'leave' %}<span class="badge bg-info text-dark"><i class="bi bi-calendar2-x"></i> On leave</span>
+              <div class="small text-muted">{{ row.leave.type_label }}</div>
+            {% elif row.state == 'absent' %}<span class="badge bg-danger">Absent</span>
+            {% else %}<span class="badge bg-light text-dark">Not checked in</span>{% endif %}
           </td>
-          <td class="small">{{ row.record.check_in.strftime('%H:%M') if row.record and row.record.check_in else '—' }}</td>
+          <td class="small">{{ row.record.check_in|localtime if row.record and row.record.check_in else '—' }}</td>
           <td class="small">
             {% if row.record and row.record.check_in_verified is not none %}
               {% if row.record.check_in_verified %}
@@ -60,7 +63,7 @@
               <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td class="small">{{ row.record.check_out.strftime('%H:%M') if row.record and row.record.check_out else '—' }}</td>
+          <td class="small">{{ row.record.check_out|localtime if row.record and row.record.check_out else '—' }}</td>
         </tr>
         {% else %}
         <tr><td colspan="6" class="text-center text-muted py-4">No active staff records.</td></tr>

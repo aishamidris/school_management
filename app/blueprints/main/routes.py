@@ -9,6 +9,7 @@ from app.models.finance import Invoice
 from app.models.exam import Result, Exam
 from app.models.tasks_comms import Task, TaskStatus
 from app.utils.permissions import has_permission
+from app.utils.timeutils import local_today
 
 main_bp = Blueprint("main", __name__, template_folder="../../templates/dashboard")
 
@@ -18,6 +19,75 @@ def _current_term():
     if not session:
         return None
     return Term.query.filter_by(session_id=session.id, is_current=True).first()
+
+
+def _admin_attendance_panel():
+    """Staff attendance / leave / duty block for the owner & admin
+    dashboards. Each section is only added if the viewer holds the
+    matching permission, and the template skips sections that are absent."""
+    from app.models.attendance import StaffAttendance
+    from app.models.leave import LeaveRequest, LeaveStatus
+    from app.models.duty import DutyAssignment
+    from app.utils.attendance_stats import load_term_summary, approved_leave_map
+
+    today = local_today()
+    panel = {"today": today}
+
+    if has_permission(current_user, "attendance.staff.view"):
+        active = Staff.query.filter_by(is_active=True).all()
+        records = StaffAttendance.query.filter_by(date=today).all()
+        checked_in = [r for r in records if r.check_in]
+        leaves = approved_leave_map(today)
+        in_ids = {r.staff_id for r in checked_in}
+        term = _current_term()
+        summary = load_term_summary(term, today) if term else None
+        panel.update(
+            term=term,
+            snapshot={
+                "total": len(active),
+                "in": len(checked_in),
+                "late": sum(1 for r in checked_in if r.is_late),
+                "leave": sum(1 for s in active if s.id in leaves and s.id not in in_ids),
+            },
+            top=(summary.ranked[:5] if summary else []),
+        )
+
+    if has_permission(current_user, "leave.manage"):
+        pending = LeaveRequest.query.filter_by(status=LeaveStatus.PENDING)
+        panel["pending_leave_total"] = pending.count()
+        panel["pending_leave"] = pending.order_by(LeaveRequest.created_at).limit(5).all()
+
+    if has_permission(current_user, "duties.view") or has_permission(current_user, "duties.manage"):
+        panel["on_duty"] = (
+            DutyAssignment.query.filter(DutyAssignment.start_date <= today, DutyAssignment.end_date >= today)
+            .order_by(DutyAssignment.start_time, DutyAssignment.id).all()
+        )
+    return panel
+
+
+def _staff_self_service():
+    """Leave + duty block shown on a staff member's own dashboard."""
+    from app.models.leave import LeaveRequest
+    from app.models.duty import DutyAssignment
+    from app.utils.attendance_stats import approved_leave_map
+
+    staff = current_user.staff_profile
+    today = local_today()
+    if not staff:
+        return {"my_duties": [], "my_leaves": [], "on_leave_today": None, "today": today}
+
+    return {
+        "today": today,
+        "my_leaves": (
+            LeaveRequest.query.filter_by(staff_id=staff.id)
+            .order_by(LeaveRequest.created_at.desc()).limit(4).all()
+        ),
+        "my_duties": (
+            DutyAssignment.query.filter(DutyAssignment.staff_id == staff.id, DutyAssignment.end_date >= today)
+            .order_by(DutyAssignment.start_date, DutyAssignment.id).limit(4).all()
+        ),
+        "on_leave_today": approved_leave_map(today).get(staff.id),
+    }
 
 
 @main_bp.route("/")
@@ -44,7 +114,10 @@ def admin_limited_dashboard():
     """Shown to admins who don't have the dashboard.owner_view permission —
     a plain welcome + shortcuts to whatever they *do* have access to,
     instead of the owner's financial figures."""
-    return render_template("dashboard/admin_limited.html")
+    return render_template(
+        "dashboard/admin_limited.html",
+        panel=_admin_attendance_panel(), **_staff_self_service(),
+    )
 
 
 def owner_admin_dashboard():
@@ -67,7 +140,10 @@ def owner_admin_dashboard():
         "collection_rate": round((collected / expected * 100), 1) if expected else 0,
         "pending_tasks": pending_tasks,
     }
-    return render_template("dashboard/owner_admin.html", stats=stats)
+    extra = {} if current_user.role == Role.OWNER else _staff_self_service()
+    return render_template(
+        "dashboard/owner_admin.html", stats=stats, panel=_admin_attendance_panel(), **extra,
+    )
 
 
 def accountant_dashboard():
@@ -97,6 +173,7 @@ def accountant_dashboard():
         "dashboard/accountant.html",
         term=term, today_count=len(today_payments), today_total=today_total,
         outstanding_total=outstanding_total, invoice_count=invoice_count,
+        **_staff_self_service(),
     )
 
 
@@ -104,7 +181,7 @@ def teacher_dashboard():
     if not current_user.staff_profile:
         return render_template(
             "dashboard/teacher.html", class_subjects=[], class_teacher_of=[],
-            total_students=0, exams_due=[], term=None,
+            total_students=0, exams_due=[], term=None, **_staff_self_service(),
         )
 
     from datetime import date
@@ -144,7 +221,7 @@ def teacher_dashboard():
         total_students=total_students,
         exams_due=exams_due,
         term=term,
-        today=date.today(),
+        **_staff_self_service(),
     )
 
 

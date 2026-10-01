@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}My Duties{% endblock %}
+{% block content %}
+<h4 class="brand-font mb-1"><i class="bi bi-clipboard2-check"></i> My Duties</h4>
+<p class="text-muted mb-4">Duties the owner has assigned to you.</p>
+
+{% macro duty_list(items, empty_text) %}
+<div class="list-group list-group-flush">
+  {% for a in items %}
+  <div class="list-group-item">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <strong>{{ a.duty.title }}</strong>
+        {% if a.duty.location %}<span class="text-muted small"> · {{ a.duty.location }}</span>{% endif %}
+      </div>
+      <span class="badge bg-light text-dark mono">{{ a.time_window_label }}</span>
+    </div>
+    <div class="small text-muted">
+      {% if a.start_date == a.end_date %}{{ a.start_date.strftime('%A, %d %b %Y') }}
+      {% else %}{{ a.start_date.strftime('%a %d %b') }} – {{ a.end_date.strftime('%a %d %b %Y') }}{% endif %}
+    </div>
+    {% if a.duty.description %}<div class="small mt-1" style="white-space:pre-line;">{{ a.duty.description }}</div>{% endif %}
+    {% if a.notes %}<div class="small mt-1"><i class="bi bi-info-circle"></i> {{ a.notes }}</div>{% endif %}
+  </div>
+  {% else %}
+  <div class="list-group-item text-muted small">{{ empty_text }}</div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header bg-white"><strong>On now</strong></div>
+      {{ duty_list(current, "You have no duty right now.") }}
+    </div>
+    <div class="card">
+      <div class="card-header bg-white"><strong>Coming up</strong></div>
+      {{ duty_list(upcoming, "Nothing scheduled.") }}
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white"><strong>Recent</strong></div>
+      {{ duty_list(past, "No past duties.") }}
+    </div>
+  </div>
+</div>
+{% endblock %}

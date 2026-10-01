@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Define Duties{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <a href="{{ url_for('duties.roster') }}" class="btn btn-sm btn-outline-secondary me-2"><i class="bi bi-arrow-left"></i></a>
+  <h4 class="mb-0 brand-font"><i class="bi bi-list-check"></i> Define Duties</h4>
+</div>
+<p class="text-muted" style="max-width:640px;">Describe each kind of duty once — what it involves and where — then assign staff to it, with dates and times, from the roster.</p>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header bg-white"><strong>New Duty</strong></div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Name</label>
+            <input type="text" name="title" class="form-control" maxlength="100" required placeholder="e.g. Morning Assembly">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Location <span class="text-muted">(optional)</span></label>
+            <input type="text" name="location" class="form-control" maxlength="100" placeholder="e.g. Main gate">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">What the duty involves</label>
+            <textarea name="description" class="form-control" rows="4" placeholder="Responsibilities, what's expected, who to report to…"></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm">Create Duty</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    {% for d in duties %}
+    <div class="card mb-3 {% if not d.is_active %}opacity-75{% endif %}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h6 class="mb-0">{{ d.title }}
+              {% if not d.is_active %}<span class="badge bg-secondary ms-1">Inactive</span>{% endif %}
+            </h6>
+            {% if d.location %}<div class="small text-muted"><i class="bi bi-geo-alt"></i> {{ d.location }}</div>{% endif %}
+          </div>
+          <div class="text-nowrap">
+            <span class="small text-muted me-2">{{ d.assignments|length }} assignment{{ '' if d.assignments|length == 1 else 's' }}</span>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#editDuty{{ d.id }}"><i class="bi bi-pencil"></i></button>
+          </div>
+        </div>
+        {% if d.description %}<p class="small mt-2 mb-0" style="white-space:pre-line;">{{ d.description }}</p>{% endif %}
+
+        <div class="collapse mt-3" id="editDuty{{ d.id }}">
+          <form method="POST" action="{{ url_for('duties.edit_duty', duty_id=d.id) }}">
+            <div class="row g-2 mb-2">
+              <div class="col-md-6"><input type="text" name="title" class="form-control form-control-sm" value="{{ d.title }}" maxlength="100" required></div>
+              <div class="col-md-6"><input type="text" name="location" class="form-control form-control-sm" value="{{ d.location or '' }}" maxlength="100" placeholder="Location"></div>
+            </div>
+            <textarea name="description" class="form-control form-control-sm mb-2" rows="3">{{ d.description or '' }}</textarea>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" name="is_active" id="active{{ d.id }}" {% if d.is_active %}checked{% endif %}>
+              <label class="form-check-label small" for="active{{ d.id }}">Active (can be assigned)</label>
+            </div>
+            <button class="btn btn-sm btn-primary">Save</button>
+          </form>
+          <form method="POST" action="{{ url_for('duties.delete_duty', duty_id=d.id) }}" class="mt-2"
+                onsubmit="return confirm('Delete the duty {{ d.title|e }}?');">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+            <span class="small text-muted ms-1">Only possible while it has no assignments.</span>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card"><div class="card-body text-center text-muted py-4">No duties defined yet.</div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

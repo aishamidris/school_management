@@ -23,6 +23,8 @@ from app.models.tasks_comms import Task, TaskStatus, Announcement, AnnouncementA
 from app.models.permission import Permission
 from app.models.settings import SchoolSettings
 from app.models.lesson_plan import LessonPlan, LessonPlanDay, LessonPlanStep
+from app.models.leave import LeaveRequest, LeaveType, LeaveStatus
+from app.models.duty import Duty, DutyAssignment
 
 __all__ = [
     "User", "Role", "AuditLog",
@@ -35,4 +37,6 @@ __all__ = [
     "Permission",
     "SchoolSettings",
     "LessonPlan", "LessonPlanDay", "LessonPlanStep",
+    "LeaveRequest", "LeaveType", "LeaveStatus",
+    "Duty", "DutyAssignment",
 ]

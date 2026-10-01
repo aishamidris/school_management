@@ -16,6 +16,12 @@ class SchoolSettings(db.Model):
     checkin_radius_m = db.Column(db.Integer, default=150)
     enforce_checkin_location = db.Column(db.Boolean, default=False)
 
+    # Punctuality. Staff who check in after late_cutoff_time (read in the
+    # school's own timezone) are flagged late. None means lateness isn't
+    # tracked at all.
+    timezone = db.Column(db.String(50), default="Africa/Lagos")
+    late_cutoff_time = db.Column(db.Time, nullable=True)
+
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @classmethod
@@ -26,6 +32,10 @@ class SchoolSettings(db.Model):
             db.session.add(settings)
             db.session.commit()
         return settings
+
+    @property
+    def tracks_lateness(self):
+        return self.late_cutoff_time is not None
 
     @property
     def is_configured(self):

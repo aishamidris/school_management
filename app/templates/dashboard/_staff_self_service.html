@@ -1,0 +1,58 @@
+{# Shown on every staff member's own dashboard. Expects: my_duties, my_leaves, on_leave_today #}
+<div class="row g-3 mt-1">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-calendar2-x"></i> Leave &amp; Absence</strong>
+        <a href="{{ url_for('leave.my_leave') }}" class="btn btn-sm btn-outline-primary">Request Leave</a>
+      </div>
+      {% if on_leave_today %}
+      <div class="alert alert-info py-2 small m-3 mb-0">You're on approved {{ on_leave_today.type_label|lower }} today.</div>
+      {% endif %}
+      <div class="list-group list-group-flush">
+        {% for r in my_leaves %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <div>{{ r.type_label }}</div>
+            <div class="small text-muted">
+              {% if r.start_date == r.end_date %}{{ r.start_date.strftime('%d %b %Y') }}
+              {% else %}{{ r.start_date.strftime('%d %b') }} – {{ r.end_date.strftime('%d %b %Y') }}{% endif %}
+            </div>
+          </div>
+          <span class="badge
+            {% if r.status == 'approved' %}bg-success{% elif r.status == 'rejected' %}bg-danger
+            {% elif r.status == 'pending' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-capitalize">{{ r.status }}</span>
+        </div>
+        {% else %}
+        <div class="list-group-item text-center text-muted small py-3">No requests yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-clipboard2-check"></i> My Duties</strong>
+        <a href="{{ url_for('duties.my_duties') }}" class="btn btn-sm btn-outline-secondary">View all</a>
+      </div>
+      <div class="list-group list-group-flush">
+        {% for a in my_duties %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <div>{{ a.duty.title }}</div>
+            <div class="small text-muted">
+              {% if a.start_date == a.end_date %}{{ a.start_date.strftime('%a, %d %b') }}
+              {% else %}{{ a.start_date.strftime('%d %b') }} – {{ a.end_date.strftime('%d %b') }}{% endif %}
+              · {{ a.time_window_label }}
+            </div>
+          </div>
+          {% if a.start_date <= today %}<span class="badge bg-success">On now</span>{% else %}<span class="badge bg-primary">Upcoming</span>{% endif %}
+        </div>
+        {% else %}
+        <div class="list-group-item text-center text-muted small py-3">No duties assigned to you.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>

@@ -21,6 +21,9 @@ from app.models.people import Student, StudentStatus, ParentProfile, StudentGuar
 from app.models.finance import FeeStructure, FeeItem, Invoice, Payment, PaymentStatus
 from app.models.exam import Exam, Question, QuestionOption, Result, GradeBand, QuestionType, AssessmentType
 from app.models.attendance import StudentAttendance, StaffAttendance, AttendanceStatus
+from app.models.settings import SchoolSettings
+from app.models.leave import LeaveRequest, LeaveType, LeaveStatus
+from app.models.duty import Duty, DutyAssignment
 
 DEMO_MARKER_EMAIL = "admin@demo.school"
 
@@ -206,8 +209,53 @@ def seed_demo_data():
             db.session.add(StudentAttendance(
                 student_id=s.id, class_arm_id=jss1a.id, date=d, status=status, recorded_by_id=teacher1.user_id
             ))
+        # Staff check-ins with real times (stored as naive UTC; Lagos is UTC+1,
+        # so 07:00 UTC is 08:00 on the wall clock) — a mix of on-time and late
+        # so the punctuality summary has something to rank.
+        arrival_utc = {
+            admin.id: (6, 40), accountant.id: (6, 55),
+            teacher1.id: (7, 0), teacher2.id: (7, 20 + days_ago * 5),
+        }
         for staff in [admin, accountant, teacher1, teacher2]:
-            db.session.add(StaffAttendance(staff_id=staff.id, date=d, status=AttendanceStatus.PRESENT))
+            h, m = arrival_utc[staff.id]
+            check_in = datetime(d.year, d.month, d.day, h, m)
+            minutes_late = max(0, (h * 60 + m) - 7 * 60)  # cut-off 08:00 Lagos == 07:00 UTC
+            db.session.add(StaffAttendance(
+                staff_id=staff.id, date=d, check_in=check_in,
+                check_out=datetime(d.year, d.month, d.day, 14, 0),
+                is_late=minutes_late > 0, minutes_late=minutes_late,
+                status=AttendanceStatus.LATE if minutes_late else AttendanceStatus.PRESENT,
+            ))
+
+    # --- Punctuality, leave & duties ---
+    school_settings = SchoolSettings.get()
+    school_settings.timezone = "Africa/Lagos"
+    school_settings.late_cutoff_time = datetime.strptime("08:00", "%H:%M").time()
+    if term and not term.start_date:
+        term.start_date = date.today() - timedelta(days=14)
+
+    db.session.add(LeaveRequest(
+        staff_id=teacher2.id, leave_type=LeaveType.CASUAL, status=LeaveStatus.PENDING,
+        start_date=date.today() + timedelta(days=2), end_date=date.today() + timedelta(days=3),
+        reason="Family event out of town.",
+    ))
+    db.session.add(LeaveRequest(
+        staff_id=accountant.id, leave_type=LeaveType.SICK, status=LeaveStatus.APPROVED,
+        start_date=date.today(), end_date=date.today() + timedelta(days=1),
+        reason="Clinic appointment.", decided_by_id=admin.user_id, decided_at=datetime.utcnow(),
+    ))
+
+    assembly = Duty(title="Morning Assembly", description="Lead the school assembly and take the register of prefects.", location="Main Hall")
+    gate = Duty(title="Gate Duty", description="Supervise arrival and dismissal at the main gate.", location="Main Gate")
+    db.session.add_all([assembly, gate])
+    db.session.flush()
+    from datetime import time as _time
+    db.session.add_all([
+        DutyAssignment(duty_id=assembly.id, staff_id=teacher1.id, start_date=date.today(),
+                       end_date=date.today() + timedelta(days=4), start_time=_time(7, 30), end_time=_time(8, 0)),
+        DutyAssignment(duty_id=gate.id, staff_id=teacher2.id, start_date=date.today(),
+                       end_date=date.today() + timedelta(days=4), start_time=_time(7, 0), end_time=_time(7, 45)),
+    ])
 
     db.session.commit()
 

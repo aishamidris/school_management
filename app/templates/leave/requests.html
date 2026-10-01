@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Leave Requests{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 brand-font"><i class="bi bi-calendar2-check"></i> Leave &amp; Absence Requests</h4>
+  <ul class="nav nav-pills small">
+    {% for key, label in [('pending','Pending'),('approved','Approved'),('rejected','Rejected'),('cancelled','Cancelled'),('all','All')] %}
+    <li class="nav-item">
+      <a class="nav-link py-1 {% if status == key %}active{% endif %}" href="{{ url_for('leave.review_requests', status=key) }}">
+        {{ label }}{% if key != 'all' and counts[key] %} <span class="badge bg-light text-dark">{{ counts[key] }}</span>{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Staff</th><th>Type &amp; Reason</th><th>Dates</th><th>Status</th><th style="min-width:260px;">Action</th></tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr>
+          <td>
+            <a href="{{ url_for('attendance.staff_term_detail', staff_id=r.staff_id) }}" class="text-decoration-none">{{ r.staff.user.full_name }}</a>
+            <div class="small text-muted text-capitalize">{{ r.staff.user.role }}</div>
+          </td>
+          <td>
+            {{ r.type_label }}
+            <div class="small text-muted" style="max-width:280px;">{{ r.reason }}</div>
+          </td>
+          <td class="small">
+            {% if r.start_date == r.end_date %}{{ r.start_date.strftime('%d %b %Y') }}
+            {% else %}{{ r.start_date.strftime('%d %b') }} – {{ r.end_date.strftime('%d %b %Y') }}{% endif %}
+            <div class="text-muted">{{ r.total_days }} day{{ '' if r.total_days == 1 else 's' }}</div>
+          </td>
+          <td>
+            <span class="badge
+              {% if r.status == 'approved' %}bg-success
+              {% elif r.status == 'rejected' %}bg-danger
+              {% elif r.status == 'pending' %}bg-warning text-dark
+              {% else %}bg-secondary{% endif %} text-capitalize">{{ r.status }}</span>
+            {% if r.decided_by %}<div class="small text-muted mt-1">by {{ r.decided_by.full_name }}</div>{% endif %}
+            {% if r.admin_note %}<div class="small text-muted">“{{ r.admin_note }}”</div>{% endif %}
+          </td>
+          <td>
+            {% if r.staff_id == own_staff_id %}
+              {% if r.status == 'pending' %}<span class="small text-muted">Your own request — needs someone else to review it.</span>{% endif %}
+            {% elif r.status == 'pending' %}
+            <form method="POST" action="{{ url_for('leave.decide', leave_id=r.id) }}" class="d-flex gap-1 flex-wrap">
+              <input type="hidden" name="return_status" value="{{ status if status != 'all' else 'pending' }}">
+              <input type="text" name="admin_note" class="form-control form-control-sm" placeholder="Note (optional)" maxlength="255" style="max-width:150px;">
+              <button name="decision" value="approve" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Approve</button>
+              <button name="decision" value="reject" class="btn btn-sm btn-outline-danger">Reject</button>
+            </form>
+            {% elif r.status == 'approved' and r.end_date >= today %}
+            <form method="POST" action="{{ url_for('leave.decide', leave_id=r.id) }}"
+                  onsubmit="return confirm('Revoke this approved leave? The days will count as absences again unless the person checks in.');">
+              <input type="hidden" name="return_status" value="{{ status if status != 'all' else 'approved' }}">
+              <button name="decision" value="revoke" class="btn btn-sm btn-outline-secondary">Revoke</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">Nothing here.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

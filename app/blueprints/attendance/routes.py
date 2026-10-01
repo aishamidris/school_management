@@ -1,10 +1,10 @@
-from datetime import datetime, date as date_cls, timedelta
+from datetime import datetime, date as date_cls, timedelta, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
 from app.extensions import db
 from app.models.user import Role
-from app.models.academic import AcademicSession, ClassArm
+from app.models.academic import AcademicSession, ClassArm, Term
 from app.models.people import Student, StudentStatus, Staff
 from app.models.attendance import StudentAttendance, StaffAttendance, AttendanceStatus
 from app.models.settings import SchoolSettings
@@ -12,6 +12,10 @@ from app.utils.decorators import roles_required, permission_required
 from app.utils.permissions import has_permission
 from app.utils.audit import log_action
 from app.utils.geo import haversine_distance_m
+from app.utils.timeutils import get_tz, local_today, is_valid_timezone, DEFAULT_TZ
+from app.utils.attendance_stats import (
+    evaluate_lateness, load_term_summary, approved_leave_map, current_term,
+)
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../../templates/attendance")
 
@@ -184,8 +188,9 @@ def my_attendance():
         flash("Your account isn't linked to a staff profile.", "warning")
         return redirect(url_for("main.dashboard"))
 
-    today = date_cls.today()
+    today = local_today()
     today_record = StaffAttendance.query.filter_by(staff_id=current_user.staff_profile.id, date=today).first()
+    my_leave = approved_leave_map(today).get(current_user.staff_profile.id)
 
     history = (
         StaffAttendance.query.filter_by(staff_id=current_user.staff_profile.id)
@@ -194,7 +199,10 @@ def my_attendance():
         .all()
     )
 
-    return render_template("attendance/my_attendance.html", today_record=today_record, history=history, today=today, settings=SchoolSettings.get())
+    return render_template(
+        "attendance/my_attendance.html", today_record=today_record, history=history,
+        today=today, settings=SchoolSettings.get(), my_leave=my_leave,
+    )
 
 
 @attendance_bp.route("/attendance/check-in", methods=["POST"])
@@ -206,7 +214,7 @@ def check_in():
         flash("Your account isn't linked to a staff profile.", "warning")
         return redirect(url_for("main.dashboard"))
 
-    today = date_cls.today()
+    today = local_today()
     record = StaffAttendance.query.filter_by(staff_id=staff.id, date=today).first()
     if record and record.check_in:
         flash("You've already checked in today.", "warning")
@@ -228,7 +236,13 @@ def check_in():
         db.session.add(record)
 
     record.check_in = datetime.utcnow()
-    record.status = AttendanceStatus.PRESENT
+
+    # Lateness is decided here, once, against the cut-off in force right
+    # now, and saved with the record.
+    is_late, minutes_late = evaluate_lateness(record.check_in, settings.late_cutoff_time, get_tz(settings.timezone))
+    record.is_late = is_late
+    record.minutes_late = minutes_late
+    record.status = AttendanceStatus.LATE if is_late else AttendanceStatus.PRESENT
     record.check_in_lat = lat
     record.check_in_lng = lng
     record.check_in_accuracy_m = accuracy
@@ -247,11 +261,18 @@ def check_in():
         action="attendance.staff_checkin",
         entity_type="StaffAttendance",
         entity_id=staff.id,
-        description=f"{current_user.full_name} checked in at {record.check_in.strftime('%H:%M')}{location_note}",
+        description=(
+            f"{current_user.full_name} checked in at "
+            f"{record.check_in.replace(tzinfo=timezone.utc).astimezone(get_tz(settings.timezone)).strftime('%H:%M')}"
+            f"{f' — {minutes_late} min late' if is_late else ''}{location_note}"
+        ),
     )
     db.session.commit()
 
-    flash("Checked in. Have a good day!", "success")
+    if is_late:
+        flash(f"Checked in — you're marked late ({minutes_late} min after the {settings.late_cutoff_time.strftime('%H:%M')} cut-off).", "warning")
+    else:
+        flash("Checked in. Have a good day!", "success")
     return redirect(url_for("attendance.my_attendance"))
 
 
@@ -264,7 +285,7 @@ def check_out():
         flash("Your account isn't linked to a staff profile.", "warning")
         return redirect(url_for("main.dashboard"))
 
-    today = date_cls.today()
+    today = local_today()
     record = StaffAttendance.query.filter_by(staff_id=staff.id, date=today).first()
     if not record or not record.check_in:
         flash("You need to check in before you can check out.", "warning")
@@ -295,7 +316,7 @@ def check_out():
         action="attendance.staff_checkout",
         entity_type="StaffAttendance",
         entity_id=staff.id,
-        description=f"{current_user.full_name} checked out at {record.check_out.strftime('%H:%M')}",
+        description=f"{current_user.full_name} checked out at {record.check_out.replace(tzinfo=timezone.utc).astimezone(get_tz()).strftime('%H:%M')}",
     )
     db.session.commit()
 
@@ -310,24 +331,141 @@ def check_out():
 @roles_required(*ADMIN_ROLES)
 @permission_required("attendance.staff.view")
 def staff_overview():
-    selected_date = _parse_date(request.args.get("date"))
+    today = local_today()
+    selected_date = _parse_date(request.args.get("date")) if request.args.get("date") else today
 
     all_staff = Staff.query.filter_by(is_active=True).all()
     records = {r.staff_id: r for r in StaffAttendance.query.filter_by(date=selected_date).all()}
+    leaves = approved_leave_map(selected_date)
+
+    # Same rule as the term summary: a past day only counts as a school
+    # day (so a no-show is "absent") if somebody actually checked in —
+    # otherwise browsing to a weekend would mark the whole staff absent.
+    was_school_day = any(r.check_in for r in records.values())
 
     rows = []
     for s in all_staff:
-        rows.append({"staff": s, "record": records.get(s.id)})
+        rec = records.get(s.id)
+        leave = leaves.get(s.id)
+        if rec and rec.check_in:
+            state = "late" if rec.is_late else "present"
+        elif leave:
+            state = "leave"
+        elif selected_date < today and was_school_day:
+            state = "absent"
+        else:
+            state = "not_in"
+        rows.append({"staff": s, "record": rec, "leave": leave, "state": state})
 
-    present_count = sum(1 for r in rows if r["record"] and r["record"].status == AttendanceStatus.PRESENT)
+    rows.sort(key=lambda r: (r["staff"].user.full_name or "").lower())
+
+    present_count = sum(1 for r in rows if r["state"] in ("present", "late"))
+    late_count = sum(1 for r in rows if r["state"] == "late")
+    leave_count = sum(1 for r in rows if r["state"] == "leave")
 
     return render_template(
         "attendance/staff_overview.html",
         rows=rows,
         selected_date=selected_date,
+        today=today,
         present_count=present_count,
+        late_count=late_count,
+        leave_count=leave_count,
         total_staff=len(all_staff),
+        settings=SchoolSettings.get(),
     )
+
+
+# ---------------- Admin: per-term punctuality & attendance ----------------
+
+def _pick_term(term_id):
+    """The term asked for, else the current term, else the most recent one."""
+    terms = (
+        Term.query.join(AcademicSession)
+        .order_by(AcademicSession.name.desc(), Term.start_date.desc(), Term.id.desc())
+        .all()
+    )
+    chosen = next((t for t in terms if t.id == term_id), None) if term_id else None
+    if chosen is None:
+        chosen = current_term() or (terms[0] if terms else None)
+    return terms, chosen
+
+
+@attendance_bp.route("/attendance/staff/terms")
+@login_required
+@roles_required(*ADMIN_ROLES)
+@permission_required("attendance.staff.view")
+def staff_term_summary():
+    terms, term = _pick_term(request.args.get("term_id", type=int))
+    summary = load_term_summary(term, local_today()) if term else None
+    return render_template(
+        "attendance/staff_term_summary.html",
+        terms=terms, term=term, summary=summary, settings=SchoolSettings.get(),
+    )
+
+
+@attendance_bp.route("/attendance/staff/<int:staff_id>/term")
+@login_required
+@roles_required(*ADMIN_ROLES)
+@permission_required("attendance.staff.view")
+def staff_term_detail(staff_id):
+    staff = Staff.query.get_or_404(staff_id)
+    terms, term = _pick_term(request.args.get("term_id", type=int))
+    summary = load_term_summary(term, local_today(), extra_staff=staff) if term else None
+    stats = summary.row_for(staff.id) if summary else None
+    return render_template(
+        "attendance/staff_term_detail.html",
+        staff=staff, terms=terms, term=term, summary=summary, stats=stats,
+        ranked_total=len(summary.ranked) if summary else 0,
+    )
+
+
+# ---------------- Admin: late cut-off ----------------
+
+@attendance_bp.route("/attendance/settings/punctuality", methods=["GET", "POST"])
+@login_required
+@roles_required(*ADMIN_ROLES)
+@permission_required("attendance.settings")
+def punctuality_settings():
+    settings = SchoolSettings.get()
+
+    if request.method == "POST":
+        raw_time = request.form.get("late_cutoff_time", "").strip()
+        tz_name = request.form.get("timezone", "").strip() or DEFAULT_TZ
+
+        cutoff = None
+        if raw_time:
+            try:
+                cutoff = datetime.strptime(raw_time, "%H:%M").time()
+            except ValueError:
+                flash("The cut-off should be a time like 08:00.", "danger")
+                return redirect(url_for("attendance.punctuality_settings"))
+
+        if not is_valid_timezone(tz_name):
+            flash(f"'{tz_name}' isn't a timezone we recognise. Try something like Africa/Lagos.", "danger")
+            return redirect(url_for("attendance.punctuality_settings"))
+
+        before = {"cutoff": settings.late_cutoff_time.strftime("%H:%M") if settings.late_cutoff_time else None,
+                  "timezone": settings.timezone}
+        settings.late_cutoff_time = cutoff
+        settings.timezone = tz_name
+
+        log_action(
+            action="attendance.late_cutoff_updated",
+            entity_type="SchoolSettings",
+            entity_id=settings.id,
+            before=before,
+            after={"cutoff": raw_time or None, "timezone": tz_name},
+            description=(
+                f"{current_user.full_name} set the staff late cut-off to {raw_time} ({tz_name})"
+                if cutoff else f"{current_user.full_name} turned off staff lateness tracking"
+            ),
+        )
+        db.session.commit()
+        flash("Late cut-off saved. It applies to check-ins from now on.", "success")
+        return redirect(url_for("attendance.punctuality_settings"))
+
+    return render_template("attendance/punctuality_settings.html", settings=settings, default_tz=DEFAULT_TZ)
 
 
 # ---------------- Admin: check-in location settings ----------------

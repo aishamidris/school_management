@@ -57,18 +57,36 @@
         </a>
         {% endif %}
         {% if current_user.role in ['owner', 'admin', 'teacher'] and has_perm('attendance.student.view') %}
-        <a href="{{ url_for('attendance.class_picker') }}" class="{% if request.blueprint == 'attendance' and request.endpoint != 'attendance.staff_overview' and request.endpoint != 'attendance.my_attendance' %}active{% endif %}">
+        <a href="{{ url_for('attendance.class_picker') }}" class="{% if request.blueprint == 'attendance' and not (request.endpoint in ['attendance.staff_overview', 'attendance.staff_term_summary', 'attendance.staff_term_detail', 'attendance.punctuality_settings', 'attendance.location_settings']) and request.endpoint != 'attendance.my_attendance' %}active{% endif %}">
           <i class="bi bi-calendar-check"></i> Attendance
         </a>
         {% endif %}
         {% if current_user.role in ['owner', 'admin'] and has_perm('attendance.staff.view') %}
-        <a href="{{ url_for('attendance.staff_overview') }}" class="{% if request.endpoint == 'attendance.staff_overview' %}active{% endif %}">
+        <a href="{{ url_for('attendance.staff_overview') }}" class="{% if request.endpoint in ['attendance.staff_overview', 'attendance.staff_term_summary', 'attendance.staff_term_detail', 'attendance.punctuality_settings', 'attendance.location_settings'] %}active{% endif %}">
           <i class="bi bi-person-check-fill"></i> Staff Attendance
         </a>
         {% endif %}
         {% if current_user.role in ['admin', 'accountant', 'teacher'] %}
         <a href="{{ url_for('attendance.my_attendance') }}" class="{% if request.endpoint == 'attendance.my_attendance' %}active{% endif %}">
           <i class="bi bi-clock-history"></i> My Attendance
+        </a>
+        {% endif %}
+        {% if current_user.role in ['owner', 'admin'] and has_perm('leave.manage') %}
+        <a href="{{ url_for('leave.review_requests') }}" class="{% if request.endpoint in ['leave.review_requests', 'leave.decide'] %}active{% endif %}">
+          <i class="bi bi-calendar2-check"></i> Leave Requests
+        </a>
+        {% endif %}
+        {% if current_user.role in ['admin', 'accountant', 'teacher'] %}
+        <a href="{{ url_for('leave.my_leave') }}" class="{% if request.blueprint == 'leave' and request.endpoint not in ['leave.review_requests', 'leave.decide'] %}active{% endif %}">
+          <i class="bi bi-calendar2-x"></i> My Leave
+        </a>
+        <a href="{{ url_for('duties.my_duties') }}" class="{% if request.endpoint == 'duties.my_duties' %}active{% endif %}">
+          <i class="bi bi-clipboard2-check"></i> My Duties
+        </a>
+        {% endif %}
+        {% if current_user.role in ['owner', 'admin'] and (has_perm('duties.view') or has_perm('duties.manage')) %}
+        <a href="{{ url_for('duties.roster') }}" class="{% if request.blueprint == 'duties' and request.endpoint != 'duties.my_duties' %}active{% endif %}">
+          <i class="bi bi-list-task"></i> Duty Roster
         </a>
         {% endif %}
         {% if current_user.role in ['owner', 'admin'] and has_perm('staff.view') %}

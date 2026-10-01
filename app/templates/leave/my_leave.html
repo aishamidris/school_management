@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}My Leave{% endblock %}
+{% block content %}
+<h4 class="brand-font mb-1"><i class="bi bi-calendar2-x"></i> Leave &amp; Absence Requests</h4>
+<p class="text-muted mb-4">Need time away, or can't make it in? Send a request here. Once an admin approves it,
+  those days show as <strong>on leave</strong> on the attendance dashboard instead of absent.</p>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header bg-white"><strong>New Request</strong></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('leave.submit_request') }}">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Type</label>
+            <select name="leave_type" class="form-select" required>
+              {% for key, label in types.items() %}
+              <option value="{{ key }}" {% if form.get('leave_type') == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label class="form-label small text-muted">From</label>
+              <input type="date" name="start_date" id="leaveStart" class="form-control" min="{{ earliest }}" value="{{ form.get('start_date', '') }}" required>
+            </div>
+            <div class="col-6 mb-3">
+              <label class="form-label small text-muted">To (inclusive)</label>
+              <input type="date" name="end_date" id="leaveEnd" class="form-control" min="{{ earliest }}" value="{{ form.get('end_date', '') }}">
+              <div class="form-text">Leave blank for a single day.</div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Reason</label>
+            <textarea name="reason" class="form-control" rows="3" maxlength="1000" required placeholder="A short note for the admin">{{ form.get('reason', '') }}</textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Send Request</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header bg-white"><strong>My Requests</strong></div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light"><tr><th>Type</th><th>Dates</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for r in requests %}
+            <tr>
+              <td>{{ r.type_label }}<div class="small text-muted text-truncate" style="max-width:220px;" title="{{ r.reason }}">{{ r.reason }}</div></td>
+              <td class="small">
+                {% if r.start_date == r.end_date %}{{ r.start_date.strftime('%d %b %Y') }}
+                {% else %}{{ r.start_date.strftime('%d %b') }} – {{ r.end_date.strftime('%d %b %Y') }}{% endif %}
+                <div class="text-muted">{{ r.total_days }} day{{ '' if r.total_days == 1 else 's' }}</div>
+              </td>
+              <td>
+                <span class="badge
+                  {% if r.status == 'approved' %}bg-success
+                  {% elif r.status == 'rejected' %}bg-danger
+                  {% elif r.status == 'pending' %}bg-warning text-dark
+                  {% else %}bg-secondary{% endif %} text-capitalize">{{ r.status }}</span>
+                {% if r.admin_note %}<div class="small text-muted mt-1">“{{ r.admin_note }}”</div>{% endif %}
+              </td>
+              <td class="text-end">
+                {% if r.status == 'pending' %}
+                <form method="POST" action="{{ url_for('leave.cancel_request', leave_id=r.id) }}" onsubmit="return confirm('Withdraw this request?');">
+                  <button class="btn btn-sm btn-outline-secondary">Withdraw</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">You haven't made any requests yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // keep "To" from being earlier than "From"
+  (function () {
+    var s = document.getElementById('leaveStart'), e = document.getElementById('leaveEnd');
+    if (!s || !e) return;
+    s.addEventListener('change', function () { if (s.value) { e.min = s.value; if (e.value && e.value < s.value) e.value = s.value; } });
+  })();
+</script>
+{% endblock %}
